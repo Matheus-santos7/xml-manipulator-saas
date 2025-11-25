@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  workspaceMembers WorkspaceMember[]
+}
+
+model Workspace {
+  id       String   @id @default(cuid())
+  name     String
+  slug     String   @unique
+  members  WorkspaceMember[]
+  profiles Profile[]
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        String   @default("member") // admin, member, viewer
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@unique([workspaceId, userId])
+}
+
+model Profile {
+  id           String     @id @default(cuid())
+  workspaceId  String
+  name         String     // "Multilaser", "Itatiaia"...
+  cnpj         String     @unique
+  razaoSocial  String?
+  endereco     Json?
+  ie           String?
+  workspace    Workspace  @relation(fields: [workspaceId], references: [id])
+  scenarios    Scenario[]
+}
+
+model Scenario {
+  id                        String         @id @default(cuid())
+  profileId                 String
+  name                      String
+  active                    Boolean        @default(true)
+  editar_emitente           Boolean
+  editar_produtos           Boolean
+  editar_impostos           Boolean
+  editar_data               Boolean
+  editar_refNFe             Boolean
+  editar_cst                Boolean
+  editar_destinatario       Boolean
+  zerar_ipi_remessa_retorno Boolean
+  zerar_ipi_venda           Boolean
+  reforma_tributaria        Boolean
+  alterar_serie             Boolean
+  alterar_cUF               Boolean
+  aplicar_reducao_aliq      Boolean
+  nova_data                 String?
+  nova_serie                String?
+  novo_cUF                  String?
+  emitente                  Json?
+  destinatario              Json?
+  produto_padrao            Json?
+  impostos_padrao           Json?
+
+  profile                   Profile        @relation(fields: [profileId], references: [id])
+  cstMappings               CstMapping[]
+  taxReformRules            TaxReformRule[]
+
+  @@unique([profileId, name])
+}
+
+model CstMapping {
+  id         String   @id @default(cuid())
+  scenarioId String
+  cfop       String
+  icms       String?
+  ipi        String?
+  pis        String?
+  cofins     String?
+  scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+}
+
+model TaxReformRule {
+  id          String   @id @default(cuid())
+  scenarioId  String
+  pIBSUF      String?
+  pIBSMun     String?
+  pCBS        String?
+  vDevTrib    String?
+  cClassTrib  String?
+  CST         String?
+  gIBSUF_gRed Json?
+  gIBSMun_gRed Json?
+  gCBS_gRed   Json?
+  scenario    Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+}
