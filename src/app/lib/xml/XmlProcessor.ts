@@ -1,14 +1,13 @@
 import { XmlHelper } from "./XmlHelper";
 import { editarNfe } from "./nfeHandler";
-// Importe os outros handlers (cteHandler, eventHandler) quando os criares
-// import { editarCte } from './cteHandler';
-// import { editarInutilizacao, editarCancelamento } from './eventHandler';
+import { editarCte } from "./cteHandler"; // <--- Certifique-se que este arquivo existe
+import { editarInutilizacao, editarCancelamento } from "./eventHandler"; // <--- Importação nova
 import {
   renameFileAccordingToRules,
   getXmlInfo,
   getEventoInfo,
 } from "./renaming";
-import type { ScenarioDB, ProcessingReport } from "../types";
+import type { ScenarioDB, ProcessingReport } from "../../../types"; // Ajuste o path conforme sua pasta
 
 export class XmlProcessor {
   private helper: XmlHelper;
@@ -48,19 +47,24 @@ export class XmlProcessor {
     this.helper.removeSignature();
 
     if (root.tagName.includes("procInutNFe")) {
-      // const result = editarInutilizacao(this.helper, scenario);
-      // msg = result.msg; alteracoes = result.alteracoes;
-    } else if (
-      root.tagName.includes("cteProc") ||
-      root.tagName.includes("CTe")
-    ) {
-      // const result = editarCte(this.helper, scenario, chaveMapping, chaveDaVendaNova);
-      // msg = result.msg; alteracoes = result.alteracoes;
+      // Lógica de Inutilização ativada
+      const result = editarInutilizacao(this.helper, scenario);
+      msg = result.msg; 
+      alteracoes = result.alteracoes;
+
+    } else if (root.tagName.includes("cteProc") || root.tagName.includes("CTe")) {
+      // Lógica de CTe ativada
+      const result = editarCte(this.helper, scenario, chaveMapping, chaveDaVendaNova);
+      msg = result.msg; 
+      alteracoes = result.alteracoes;
+
     } else if (root.tagName.includes("procEventoNFe")) {
-      // alteracoes = editarCancelamento(this.helper, chaveMapping, scenario.editar_data, scenario.nova_data);
+      // Lógica de Cancelamento ativada
+      alteracoes = editarCancelamento(this.helper, chaveMapping, scenario.editar_data, scenario.nova_data ?? undefined);
       msg = "Evento de Cancelamento processado";
+      
     } else {
-      // NFE (Já implementado acima)
+      // NFE (Padrão)
       const result = editarNfe(
         this.helper,
         scenario,

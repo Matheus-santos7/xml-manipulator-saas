@@ -1,4 +1,4 @@
-import { XmlHelper } from '../XmlHelper';
+import { XmlHelper } from './XmlHelper';
 import { ScenarioDB } from '../../../types';
 
 export function editarCte(
@@ -14,7 +14,7 @@ export function editarCte(
   
   if (!infCte) return { msg, alteracoes };
 
-  let idAtual = infCte.getAttribute('Id') || '';
+  const idAtual = infCte.getAttribute('Id') || '';
   let altered = false;
 
   // 1. Recálculo de Chave (Data ou UF mudou)
@@ -22,7 +22,10 @@ export function editarCte(
     const ufAtual = idAtual.slice(3, 5);
     const aammAtual = idAtual.slice(5, 9);
     const cnpjAtual = idAtual.slice(9, 23);
-    const restoAtual = idAtual.slice(23, 43);
+    
+    // CORREÇÃO AQUI: O slice correto é até 46 para pegar os 23 dígitos restantes
+    // (Antes estava 43, o que gerava uma chave de 40 dígitos no total)
+    const restoAtual = idAtual.slice(23, 46);
 
     const ufNovo = scenario.novo_cUF?.padStart(2, '0') || ufAtual;
     const aammNovo = scenario.nova_data 
@@ -30,6 +33,8 @@ export function editarCte(
       : aammAtual;
 
     const novaChaveSemDv = `${ufNovo}${aammNovo}${cnpjAtual}${restoAtual}`;
+    
+    // Agora novaChaveSemDv terá 43 dígitos (2+4+14+23) e o cálculo funcionará
     const novaDv = helper.calcularDvChave(novaChaveSemDv);
     const novaChaveComDv = `CTe${novaChaveSemDv}${novaDv}`;
     
@@ -74,7 +79,6 @@ export function editarCte(
       if (updated) altered = true;
     }
   }
-
   // 4. Emitente
   if (scenario.editar_emitente && scenario.emitente) {
     const rem = helper.findElement(infCte, 'rem');
@@ -83,14 +87,12 @@ export function editarCte(
       for (const [campo, valor] of Object.entries(scenario.emitente)) {
         const target = ['xLgr', 'nro', 'xCpl', 'xBairro', 'xMun', 'UF', 'fone'].includes(campo) ? enderRem : rem;
         if (target) {
-          // @ts-ignore
           const tag = helper.findElement(target, campo);
           if (tag) { tag.textContent = valor as string; alteracoes.push(`Remetente: <${campo}> alterado`); altered = true; }
         }
       }
     }
   }
-
   // 5. Sincronizar Protocolo
   const protCte = helper.findElementDeep(root, 'protCTe/infProt');
   if (protCte && infCte) {

@@ -21,7 +21,7 @@ export function Navbar() {
 
   const routes = [
     {
-      href: "/dashboard/manipulador",
+      href: "/manipulador",
       label: "Processador XML",
       icon: FileCode,
       active: pathname.includes("/manipulador"),

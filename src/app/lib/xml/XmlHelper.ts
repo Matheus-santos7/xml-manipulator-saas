@@ -19,7 +19,8 @@ export class XmlHelper {
   public serialize(): Buffer {
     const serializer = new XMLSerializer();
     let xmlStr = serializer.serializeToString(this.doc);
-    // Limpeza de namespaces e formatação (mantendo a lógica original)
+    
+    // Limpeza de namespaces e formatação para ficar igual ao Python
     xmlStr = xmlStr.replace(
       /xmlns:ds="http:\/\/www.w3.org\/2000\/09\/xmldsig#"/g,
       ""
@@ -39,22 +40,46 @@ export class XmlHelper {
     return Buffer.from(xmlStr, "utf-8");
   }
 
+  /**
+   * Método auxiliar para garantir que retornamos um Elemento único
+   * A lib xpath retorna Array ou Node, precisamos normalizar isso.
+   */
+  private getFirstElement(result: any): Element | null {
+    if (Array.isArray(result)) {
+      return result.length > 0 ? (result[0] as Element) : null;
+    }
+    return result ? (result as Element) : null;
+  }
+
   public findElement(parent: Node | null, path: string): Element | null {
     if (!parent) return null;
     try {
-      let elem = this.select(`nfe:${path}` as any, parent) as Element;
+      // Tenta nfe:
+      let res = this.select(`nfe:${path}` as any, parent);
+      let elem = this.getFirstElement(res);
       if (elem) return elem;
-      elem = this.select(`cte:${path}` as any, parent) as Element;
+      
+      // Tenta cte:
+      res = this.select(`cte:${path}` as any, parent);
+      elem = this.getFirstElement(res);
       if (elem) return elem;
-      return this.select(path as any, parent) as Element;
+
+      // Tenta sem namespace
+      res = this.select(path as any, parent);
+      return this.getFirstElement(res);
     } catch (err) {
-      // Fallback: tente buscar a partir do documento como contexto
+      // Fallback de contexto global se falhar no parente
       try {
-        let elem = this.select(`.//nfe:${path}` as any, this.doc) as Element;
-        if (elem) return elem;
-        elem = this.select(`.//cte:${path}` as any, this.doc) as Element;
-        if (elem) return elem;
-        return this.select(`.//${path}` as any, this.doc) as Element;
+         let res = this.select(`.//nfe:${path}` as any, this.doc);
+         let elem = this.getFirstElement(res);
+         if (elem) return elem;
+         
+         res = this.select(`.//cte:${path}` as any, this.doc);
+         elem = this.getFirstElement(res);
+         if (elem) return elem;
+         
+         res = this.select(`.//${path}` as any, this.doc);
+         return this.getFirstElement(res);
       } catch (err2) {
         return null;
       }
@@ -64,42 +89,37 @@ export class XmlHelper {
   public findAllElements(parent: Node | null, path: string): Element[] {
     if (!parent) return [];
     try {
-      let elems = this.select(`nfe:${path}` as any, parent) as Element[];
-      if (elems && elems.length) return elems;
-      elems = this.select(`cte:${path}` as any, parent) as Element[];
-      if (elems && elems.length) return elems;
-      return this.select(path as any, parent) as Element[];
+      let result = this.select(`nfe:${path}` as any, parent);
+      let elems = Array.isArray(result) ? result : [result];
+      if (elems && elems.length > 0 && elems[0]) return elems as Element[];
+
+      result = this.select(`cte:${path}` as any, parent);
+      elems = Array.isArray(result) ? result : [result];
+      if (elems && elems.length > 0 && elems[0]) return elems as Element[];
+
+      result = this.select(path as any, parent);
+      elems = Array.isArray(result) ? result : [result];
+      return (elems && elems.length > 0 && elems[0]) ? elems as Element[] : [];
     } catch (err) {
-      try {
-        let elems = this.select(`.//nfe:${path}` as any, this.doc) as Element[];
-        if (elems && elems.length) return elems;
-        elems = this.select(`.//cte:${path}` as any, this.doc) as Element[];
-        if (elems && elems.length) return elems;
-        return this.select(`.//${path}` as any, this.doc) as Element[];
-      } catch (err2) {
-        return [];
-      }
+      return [];
     }
   }
 
   public findElementDeep(parent: Node | null, path: string): Element | null {
     if (!parent) return null;
     try {
-      let elem = this.select(`.//nfe:${path}` as any, parent) as Element;
+      let res = this.select(`.//nfe:${path}` as any, parent);
+      let elem = this.getFirstElement(res);
       if (elem) return elem;
-      elem = this.select(`.//cte:${path}` as any, parent) as Element;
+
+      res = this.select(`.//cte:${path}` as any, parent);
+      elem = this.getFirstElement(res);
       if (elem) return elem;
-      return this.select(`.//${path}` as any, parent) as Element;
+
+      res = this.select(`.//${path}` as any, parent);
+      return this.getFirstElement(res);
     } catch (err) {
-      try {
-        let elem = this.select(`.//nfe:${path}` as any, this.doc) as Element;
-        if (elem) return elem;
-        elem = this.select(`.//cte:${path}` as any, this.doc) as Element;
-        if (elem) return elem;
-        return this.select(`.//${path}` as any, this.doc) as Element;
-      } catch (err2) {
-        return null;
-      }
+       return null;
     }
   }
 
@@ -116,7 +136,9 @@ export class XmlHelper {
 
   public removeSignature(): void {
     const signature = this.findElementDeep(this.doc, "Signature");
-    if (signature) signature.parentNode?.removeChild(signature);
+    if (signature && signature.parentNode) {
+        signature.parentNode.removeChild(signature);
+    }
   }
 
   public calcularDvChave(chave: string): string {
