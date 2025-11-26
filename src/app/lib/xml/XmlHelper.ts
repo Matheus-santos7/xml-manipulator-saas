@@ -4,7 +4,7 @@ import { NS } from "./constants";
 
 export class XmlHelper {
   public doc: Document;
-  private select: xpath.XPathEvaluator["select"];
+  private select: ReturnType<typeof xpath.useNamespaces>;
 
   constructor(xmlBuffer: Buffer) {
     const parser = new DOMParser();
@@ -19,7 +19,7 @@ export class XmlHelper {
   public serialize(): Buffer {
     const serializer = new XMLSerializer();
     let xmlStr = serializer.serializeToString(this.doc);
-    
+
     // Limpeza de namespaces e formatação para ficar igual ao Python
     xmlStr = xmlStr.replace(
       /xmlns:ds="http:\/\/www.w3.org\/2000\/09\/xmldsig#"/g,
@@ -40,6 +40,13 @@ export class XmlHelper {
     return Buffer.from(xmlStr, "utf-8");
   }
 
+  // Alias em português de `serialize`.
+  // Mantemos `serialize` para compatibilidade com chamadas existentes,
+  // porém prefira `serializar` nas novas implementações.
+  public serializar(): Buffer {
+    return this.serialize();
+  }
+
   /**
    * Método auxiliar para garantir que retornamos um Elemento único
    * A lib xpath retorna Array ou Node, precisamos normalizar isso.
@@ -58,7 +65,7 @@ export class XmlHelper {
       let res = this.select(`nfe:${path}` as any, parent);
       let elem = this.getFirstElement(res);
       if (elem) return elem;
-      
+
       // Tenta cte:
       res = this.select(`cte:${path}` as any, parent);
       elem = this.getFirstElement(res);
@@ -70,16 +77,16 @@ export class XmlHelper {
     } catch (err) {
       // Fallback de contexto global se falhar no parente
       try {
-         let res = this.select(`.//nfe:${path}` as any, this.doc);
-         let elem = this.getFirstElement(res);
-         if (elem) return elem;
-         
-         res = this.select(`.//cte:${path}` as any, this.doc);
-         elem = this.getFirstElement(res);
-         if (elem) return elem;
-         
-         res = this.select(`.//${path}` as any, this.doc);
-         return this.getFirstElement(res);
+        let res = this.select(`.//nfe:${path}` as any, this.doc);
+        let elem = this.getFirstElement(res);
+        if (elem) return elem;
+
+        res = this.select(`.//cte:${path}` as any, this.doc);
+        elem = this.getFirstElement(res);
+        if (elem) return elem;
+
+        res = this.select(`.//${path}` as any, this.doc);
+        return this.getFirstElement(res);
       } catch (err2) {
         return null;
       }
@@ -99,7 +106,7 @@ export class XmlHelper {
 
       result = this.select(path as any, parent);
       elems = Array.isArray(result) ? result : [result];
-      return (elems && elems.length > 0 && elems[0]) ? elems as Element[] : [];
+      return elems && elems.length > 0 && elems[0] ? (elems as Element[]) : [];
     } catch (err) {
       return [];
     }
@@ -119,7 +126,7 @@ export class XmlHelper {
       res = this.select(`.//${path}` as any, parent);
       return this.getFirstElement(res);
     } catch (err) {
-       return null;
+      return null;
     }
   }
 
@@ -137,7 +144,7 @@ export class XmlHelper {
   public removeSignature(): void {
     const signature = this.findElementDeep(this.doc, "Signature");
     if (signature && signature.parentNode) {
-        signature.parentNode.removeChild(signature);
+      signature.parentNode.removeChild(signature);
     }
   }
 

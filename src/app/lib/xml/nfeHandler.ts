@@ -1,3 +1,6 @@
+// Manipulação da NFe: funções que alteram tags, valores e recalculam totais.
+// Os comentários e nomes aqui estão em português para facilitar manutenção.
+
 import Decimal from "decimal.js";
 import type { XmlHelper } from "./XmlHelper";
 import { VENDAS_CFOP, REMESSAS_CFOP, RETORNOS_CFOP } from "./constants";
@@ -7,6 +10,12 @@ import {
   recalculaTotaisIpi,
 } from "./taxUtils";
 import type { ScenarioDB } from "../../../types";
+import {
+  getEmitenteMap,
+  getDestinatarioMap,
+  getProdutoPadraoMap,
+  getImpostosPadraoMap,
+} from "../scenarioUtils";
 
 export function editarNfe(
   helper: XmlHelper,
@@ -42,11 +51,12 @@ export function editarNfe(
   }
 
   // --- Emitente ---
-  if (scenario.editar_emitente && scenario.emitente) {
+  const emitenteMap = getEmitenteMap(scenario);
+  if (scenario.editar_emitente && emitenteMap) {
     const emit = helper.findElement(infNFe, "emit");
     if (emit) {
       const ender = helper.findElement(emit, "enderEmit");
-      for (const [campo, valor] of Object.entries(scenario.emitente)) {
+      for (const [campo, valor] of Object.entries(emitenteMap)) {
         const target = [
           "xLgr",
           "nro",
@@ -72,13 +82,14 @@ export function editarNfe(
   // --- Destinatário & Endereços ---
   const cfopGeral =
     helper.findElementDeep(infNFe, "det/prod/CFOP")?.textContent || "";
-  if (scenario.editar_destinatario && scenario.destinatario && cfopGeral) {
+  const destinatarioMap = getDestinatarioMap(scenario);
+  if (scenario.editar_destinatario && destinatarioMap && cfopGeral) {
     if (VENDAS_CFOP.includes(cfopGeral)) {
       criarOuAtualizarBlocoEndereco(
         helper,
         ide,
         "retirada",
-        scenario.destinatario as any,
+        destinatarioMap,
         alteracoes,
         "Retirada"
       );
@@ -90,7 +101,7 @@ export function editarNfe(
         helper,
         infNFe,
         "dest",
-        scenario.destinatario as any,
+        destinatarioMap,
         alteracoes,
         "Destinatário",
         "enderDest"
@@ -112,8 +123,9 @@ export function editarNfe(
     if (!prod || !imposto) continue;
 
     // Edição Produto Padrão
-    if (scenario.editar_produtos && scenario.produto_padrao) {
-      for (const [campo, valor] of Object.entries(scenario.produto_padrao)) {
+    const produtoMap = getProdutoPadraoMap(scenario);
+    if (scenario.editar_produtos && produtoMap) {
+      for (const [campo, valor] of Object.entries(produtoMap)) {
         const tag = helper.findElement(prod, campo);
         if (tag) {
           tag.textContent = valor as string;
@@ -123,8 +135,9 @@ export function editarNfe(
     }
 
     // Edição Impostos Padrão
-    if (scenario.editar_impostos && scenario.impostos_padrao) {
-      for (const [campo, valor] of Object.entries(scenario.impostos_padrao)) {
+    const impostosMap = getImpostosPadraoMap(scenario);
+    if (scenario.editar_impostos && impostosMap) {
+      for (const [campo, valor] of Object.entries(impostosMap)) {
         const tag = helper.findElementDeep(imposto, campo);
         if (tag && !alteracoes.includes(`Imposto: <${campo}> alterado`)) {
           tag.textContent = valor as string;
@@ -320,7 +333,7 @@ function criarOuAtualizarBlocoEndereco(
   for (const [campo, valor] of Object.entries(data)) {
     const target = camposEndereco.includes(campo) ? enderContainer : bloco;
     let tag = helper.findElement(target, campo);
-    if (!tag) tag = helper.createAndSetText(target, campo, valor);
+    if (!tag) tag = helper.createAndSetText(target as Element, campo, valor);
     else tag.textContent = valor;
 
     alteracoes.push(`${logPrefix}: <${campo}> alterado`);

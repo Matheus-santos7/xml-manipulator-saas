@@ -8,128 +8,187 @@ datasource db {
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
-  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  workspaceMembers WorkspaceMember[]
-}
-
-model Workspace {
-  id       String   @id @default(cuid())
-  name     String
-  slug     String   @unique
-  members  WorkspaceMember[]
-  profiles Profile[]
-}
-
-model WorkspaceMember {
-  id          String   @id @default(cuid())
-  workspaceId String
-  userId      String
-  role        String   @default("member") // admin, member, viewer
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
-
-  @@unique([workspaceId, userId])
-}
-
-model Profile {
-  id           String     @id @default(cuid())
-  workspaceId  String
-  name         String     // "Multilaser", "Itatiaia"...
-  cnpj         String     @unique
-  razaoSocial  String?
-  endereco     Json?
-  ie           String?
-  workspace    Workspace  @relation(fields: [workspaceId], references: [id])
-  scenarios    Scenario[]
-}
-
-model Scenario {
-  id                        String         @id @default(cuid())
-  profileId                 String
-  name                      String
-  active                    Boolean        @default(true)
-  editar_emitente           Boolean
-  editar_produtos           Boolean
-  editar_impostos           Boolean
-  editar_data               Boolean
-  editar_refNFe             Boolean
-  editar_cst                Boolean
-  editar_destinatario       Boolean
-  zerar_ipi_remessa_retorno Boolean
-  zerar_ipi_venda           Boolean
-  reforma_tributaria        Boolean
-  alterar_serie             Boolean
-  alterar_cUF               Boolean
-  aplicar_reducao_aliq      Boolean
-  nova_data                 String?
-  nova_serie                String?
-  novo_cUF                  String?
-  emitente                  Json?
-  destinatario              Json?
-  produto_padrao            Json?
-  impostos_padrao           Json?
-
-  profile                   Profile        @relation(fields: [profileId], references: [id])
-  cstMappings               CstMapping[]
-  taxReformRules            TaxReformRule[]
-
-  @@unique([profileId, name])
-}
-
 model CstMapping {
-  id         String   @id @default(cuid())
+  id         String   @id
   scenarioId String
   cfop       String
   icms       String?
   ipi        String?
   pis        String?
   cofins     String?
-  scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  Scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+}
+
+model Profile {
+  id          String     @id
+  workspaceId String
+  name        String
+  cnpj        String     @unique
+  razaoSocial String?
+  endereco    Json?
+  Workspace   Workspace  @relation(fields: [workspaceId], references: [id])
+  Scenario    Scenario[]
+}
+
+model Scenario {
+  id                        String                @id
+  profileId                 String
+  name                      String
+  active                    Boolean               @default(true)
+  editar_emitente           Boolean               @default(false)
+  editar_produtos           Boolean               @default(false)
+  editar_impostos           Boolean               @default(false)
+  editar_data               Boolean               @default(false)
+  editar_refNFe             Boolean               @default(false)
+  editar_cst                Boolean               @default(false)
+  editar_destinatario       Boolean               @default(false)
+  zerar_ipi_remessa_retorno Boolean               @default(false)
+  zerar_ipi_venda           Boolean               @default(false)
+  reforma_tributaria        Boolean               @default(false)
+  alterar_serie             Boolean               @default(false)
+  alterar_cUF               Boolean               @default(false)
+  aplicar_reducao_aliq      Boolean               @default(false)
+  nova_data                 String?
+  nova_serie                String?
+  novo_cUF                  String?
+  CstMapping                CstMapping[]
+  Profile                   Profile               @relation(fields: [profileId], references: [id])
+  ScenarioDestinatario      ScenarioDestinatario?
+  ScenarioEmitente          ScenarioEmitente?
+  ScenarioImposto           ScenarioImposto?
+  ScenarioProduto           ScenarioProduto?
+  TaxReformRule             TaxReformRule[]
+
+  @@unique([profileId, name])
+}
+
+model ScenarioDestinatario {
+  id         String   @id
+  scenarioId String   @unique
+  cnpj       String?
+  xNome      String?
+  IE         String?
+  xLgr       String?
+  nro        String?
+  xBairro    String?
+  xMun       String?
+  UF         String?
+  CEP        String?
+  fone       String?
+  cpf        String?
+  tipoPessoa String?
+  Scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+}
+
+model ScenarioEmitente {
+  id         String   @id
+  scenarioId String   @unique
+  cnpj       String?
+  xNome      String?
+  xLgr       String?
+  nro        String?
+  xCpl       String?
+  xBairro    String?
+  xMun       String?
+  UF         String?
+  fone       String?
+  IE         String?
+  CEP        String?
+  Scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+}
+
+model ScenarioImposto {
+  id          String   @id
+  scenarioId  String   @unique
+  pFCP        String?
+  pICMS       String?
+  pICMSUFDest String?
+  pICMSInter  String?
+  pPIS        String?
+  pCOFINS     String?
+  pIPI        String?
+  Scenario    Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+}
+
+model ScenarioProduto {
+  id         String   @id
+  scenarioId String   @unique
+  xProd      String?
+  cEAN       String?
+  cProd      String?
+  NCM        String?
+  CEST       String?
+  EXTIPI     String?
+  CFOP       String?
+  Scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id           String   @id
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model TaxReformRule {
-  id          String   @id @default(cuid())
-  scenarioId  String
-  pIBSUF      String?
-  pIBSMun     String?
-  pCBS        String?
-  vDevTrib    String?
-  cClassTrib  String?
-  CST         String?
-  gIBSUF_gRed Json?
+  id           String   @id
+  scenarioId   String
+  pIBSUF       String?
+  pIBSMun      String?
+  pCBS         String?
+  vDevTrib     String?
+  cClassTrib   String?
+  CST          String?
+  gIBSUF_gRed  Json?
   gIBSMun_gRed Json?
-  gCBS_gRed   Json?
-  scenario    Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  gCBS_gRed    Json?
+  Scenario     Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id              String            @id
+  name            String?
+  email           String?           @unique
+  emailVerified   DateTime?
+  image           String?
+  Account         Account[]
+  Session         Session[]
+  WorkspaceMember WorkspaceMember[]
+}
+
+model Workspace {
+  id              String            @id
+  name            String
+  slug            String            @unique
+  Profile         Profile[]
+  WorkspaceMember WorkspaceMember[]
+}
+
+model WorkspaceMember {
+  id          String    @id
+  workspaceId String
+  userId      String
+  role        String    @default("member")
+  User        User      @relation(fields: [userId], references: [id])
+  Workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([workspaceId, userId])
 }
