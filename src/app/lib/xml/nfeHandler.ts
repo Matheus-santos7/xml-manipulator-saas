@@ -83,7 +83,9 @@ export function editarNfe(
   const cfopGeral =
     helper.findElementDeep(infNFe, "det/prod/CFOP")?.textContent || "";
   const destinatarioMap = getDestinatarioMap(scenario);
-  if (scenario.editar_destinatario && destinatarioMap && cfopGeral) {
+  const editarDestinatario =
+    scenario.editar_destinatario_pj || scenario.editar_destinatario_pf;
+  if (editarDestinatario && destinatarioMap && cfopGeral) {
     if (VENDAS_CFOP.includes(cfopGeral)) {
       criarOuAtualizarBlocoEndereco(
         helper,
@@ -115,6 +117,11 @@ export function editarNfe(
   let totalVIBSMun = new Decimal(0);
   let totalVCBS = new Decimal(0);
   let totalVDevTrib = new Decimal(0);
+
+  // Fallback para nomes de relações (Prisma retorna PascalCase)
+  const cstMappings = scenario.CstMapping || scenario.cstMappings || [];
+  const taxReformRules =
+    scenario.TaxReformRule || scenario.taxReformRules || [];
 
   const dets = helper.findAllElements(infNFe, "det");
   for (const det of dets) {
@@ -150,7 +157,7 @@ export function editarNfe(
 
     // CST Mappings
     if (cfop && scenario.editar_cst) {
-      const regras = scenario.cstMappings.find((m) => m.cfop === cfop);
+      const regras = cstMappings.find((m) => m.cfop === cfop);
       if (regras) {
         for (const [impostoNome, cstValor] of Object.entries(regras)) {
           if (impostoNome === "cfop") continue;
@@ -192,7 +199,7 @@ export function editarNfe(
     }
 
     // Reforma Tributária
-    if (scenario.reforma_tributaria && scenario.taxReformRules.length) {
+    if (scenario.reforma_tributaria && taxReformRules.length) {
       const ibscbsExistente = helper.findElement(imposto, "IBSCBS");
       if (ibscbsExistente) imposto.removeChild(ibscbsExistente);
 
@@ -200,7 +207,7 @@ export function editarNfe(
         helper,
         imposto,
         prod,
-        scenario.taxReformRules[0],
+        taxReformRules[0],
         alteracoes,
         scenario.aplicar_reducao_aliq
       );
@@ -217,7 +224,7 @@ export function editarNfe(
     recalculaTotaisIpi(helper, infNFe, alteracoes);
   }
 
-  if (scenario.reforma_tributaria && scenario.taxReformRules.length) {
+  if (scenario.reforma_tributaria && taxReformRules.length) {
     const totalTag = helper.findElement(infNFe, "total");
     if (totalTag) {
       const totIBSCBSExistente = helper.findElement(totalTag, "IBSCBSTot");

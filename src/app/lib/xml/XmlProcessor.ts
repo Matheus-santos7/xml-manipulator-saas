@@ -1,19 +1,13 @@
 import { XmlHelper } from "./XmlHelper";
 import { editarNfe } from "./nfeHandler";
-import { editarCte } from "./cteHandler"; // <--- Certifique-se que este arquivo existe
-import { editarInutilizacao, editarCancelamento } from "./eventHandler"; // <--- Importação nova
+import { editarCte } from "./cteHandler";
+import { editarInutilizacao, editarCancelamento } from "./eventHandler";
 import {
   renameFileAccordingToRules,
   getXmlInfo,
   getEventoInfo,
 } from "./renaming";
-import type { ScenarioDB, ProcessingReport } from "../../../types"; // Ajuste o path conforme sua pasta
-
-// Classe que encapsula operações sobre um XML.
-// Os métodos originais em inglês foram mantidos para compatibilidade,
-// e foram adicionados aliases em português abaixo (ex: `obterInfoXml`).
-// Favor usar os métodos em português nas novas implementações.
-
+import type { ScenarioDB, ProcessingReport } from "../../../types";
 export class XmlProcessor {
   private helper: XmlHelper;
 
@@ -25,7 +19,6 @@ export class XmlProcessor {
     return getXmlInfo(this.helper);
   }
 
-  // Alias em português
   public obterInfoXml() {
     return this.getXmlInfo();
   }
@@ -34,17 +27,15 @@ export class XmlProcessor {
     return getEventoInfo(this.helper);
   }
 
-  // Alias em português
   public obterInfoEvento() {
     return this.getEventoInfo();
   }
 
-  public renameFileAccordingToRules(info: Record<string, any>) {
+  public renameFileAccordingToRules(info: Record<string, unknown>) {
     return renameFileAccordingToRules(info);
   }
 
-  // Alias em português
-  public renomearArquivoPorRegras(info: Record<string, any>) {
+  public renomearArquivoPorRegras(info: Record<string, unknown>) {
     return this.renameFileAccordingToRules(info);
   }
 
@@ -52,7 +43,6 @@ export class XmlProcessor {
     return this.helper.serialize();
   }
 
-  // Alias em português
   public serializar(): Buffer {
     return this.serialize();
   }
@@ -118,7 +108,6 @@ export class XmlProcessor {
     };
   }
 
-  // Alias em português
   public aplicarCenario(
     scenario: ScenarioDB,
     chaveMapping: Record<string, string>,

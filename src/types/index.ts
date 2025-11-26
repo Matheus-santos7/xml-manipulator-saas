@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 // src/types/index.ts
 
 export interface ScenarioDB {
@@ -7,7 +9,8 @@ export interface ScenarioDB {
   active: boolean;
   // Flags
   editar_emitente: boolean;
-  editar_destinatario: boolean;
+  editar_destinatario_pj: boolean;
+  editar_destinatario_pf: boolean;
   editar_produtos: boolean;
   editar_impostos: boolean;
   editar_data: boolean;
@@ -31,15 +34,21 @@ export interface ScenarioDB {
   produto_padrao?: Record<string, unknown> | null; // JSON antigo
   impostos_padrao?: Record<string, unknown> | null; // JSON antigo
 
-  // Novas relações normalizadas (tabelas separadas no schema)
+  // Novas relações normalizadas (nomes camelCase - uso interno)
   emitenteData?: ScenarioEmitenteDB | null;
   destinatarioData?: ScenarioDestinatarioDB | null;
   produtoData?: ScenarioProdutoDB | null;
   impostosData?: ScenarioImpostoDB | null;
+  cstMappings?: CstMappingDB[];
+  taxReformRules?: TaxReformRuleDB[];
 
-  // Relações 1:N
-  cstMappings: CstMappingDB[];
-  taxReformRules: TaxReformRuleDB[];
+  // Relações Prisma (nomes PascalCase - retornados pelo Prisma)
+  ScenarioEmitente?: ScenarioEmitenteDB | null;
+  ScenarioDestinatario?: ScenarioDestinatarioDB | null;
+  ScenarioProduto?: ScenarioProdutoDB | null;
+  ScenarioImposto?: ScenarioImpostoDB | null;
+  CstMapping?: CstMappingDB[];
+  TaxReformRule?: TaxReformRuleDB[];
 }
 
 export interface CstMappingDB {
@@ -61,9 +70,9 @@ export interface TaxReformRuleDB {
   vDevTrib?: string | null;
   cClassTrib?: string | null;
   CST?: string | null;
-  gIBSUF_gRed?: Record<string, unknown> | null; // Json
-  gIBSMun_gRed?: Record<string, unknown> | null; // Json
-  gCBS_gRed?: Record<string, unknown> | null; // Json
+  gIBSUF_gRed?: Prisma.JsonValue | null; // Json
+  gIBSMun_gRed?: Prisma.JsonValue | null; // Json
+  gCBS_gRed?: Prisma.JsonValue | null; // Json
 }
 
 export interface ScenarioEmitenteDB {
@@ -85,6 +94,7 @@ export interface ScenarioDestinatarioDB {
   id: string;
   scenarioId: string;
   cnpj?: string | null;
+  cpf?: string | null;
   xNome?: string | null;
   IE?: string | null;
   xLgr?: string | null;

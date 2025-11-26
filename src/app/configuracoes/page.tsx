@@ -33,12 +33,12 @@ export default async function SettingsPage(props: {
         where: { profileId: selectedProfileId },
         orderBy: { name: "asc" },
         include: {
-          emitenteData: true,
-          destinatarioData: true,
-          produtoData: true,
-          impostosData: true,
-          cstMappings: true,
-          taxReformRules: true,
+          ScenarioEmitente: true,
+          ScenarioDestinatario: true,
+          ScenarioProduto: true,
+          ScenarioImposto: true,
+          CstMapping: true,
+          TaxReformRule: true,
         },
       })
     : [];

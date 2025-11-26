@@ -16,8 +16,12 @@ export async function processXmlBatch(formData: FormData) {
     const scenario = await db.scenario.findUnique({
       where: { id: scenarioId },
       include: {
-        cstMappings: true,
-        taxReformRules: true,
+        CstMapping: true,
+        TaxReformRule: true,
+        ScenarioEmitente: true,
+        ScenarioDestinatario: true,
+        ScenarioProduto: true,
+        ScenarioImposto: true,
       },
     });
 

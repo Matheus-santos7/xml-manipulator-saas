@@ -70,7 +70,6 @@ const emitenteSchema = z.object({
 });
 
 const destinatarioSchema = z.object({
-  tipoPessoa: z.string().optional(),
   cnpj: z.string().optional(),
   cpf: z.string().optional(),
   xNome: z.string().optional(),
@@ -112,7 +111,8 @@ const formSchema = z.object({
 
   // Flags de controle
   editar_emitente: z.boolean().default(false),
-  editar_destinatario: z.boolean().default(false),
+  editar_destinatario_pj: z.boolean().default(false),
+  editar_destinatario_pf: z.boolean().default(false),
   editar_produtos: z.boolean().default(false),
   editar_impostos: z.boolean().default(false),
   editar_data: z.boolean().default(false),
@@ -177,7 +177,10 @@ export function ScenarioEditor({
 
     // Extrair dados do emitente
     const getEmitenteData = (): Record<string, string> => {
-      const data = scenarioToEdit?.emitenteData || scenarioToEdit?.emitente;
+      const data =
+        scenarioToEdit?.ScenarioEmitente ||
+        scenarioToEdit?.emitenteData ||
+        scenarioToEdit?.emitente;
       if (!data) return {};
       const d = data as Record<string, unknown>;
       return {
@@ -189,6 +192,7 @@ export function ScenarioEditor({
         xBairro: str(d.xBairro),
         xMun: str(d.xMun),
         UF: str(d.UF),
+        CEP: str(d.CEP),
         fone: str(d.fone),
         IE: str(d.IE),
       };
@@ -197,11 +201,15 @@ export function ScenarioEditor({
     // Extrair dados do destinatário
     const getDestinatarioData = (): Record<string, string> => {
       const data =
-        scenarioToEdit?.destinatarioData || scenarioToEdit?.destinatario;
+        scenarioToEdit?.ScenarioDestinatario ||
+        scenarioToEdit?.destinatarioData ||
+        scenarioToEdit?.destinatario;
       if (!data) return {};
       const d = data as Record<string, unknown>;
+
       return {
         cnpj: str(d.cnpj ?? d.CNPJ),
+        cpf: str(d.cpf ?? d.CPF),
         xNome: str(d.xNome),
         IE: str(d.IE),
         xLgr: str(d.xLgr),
@@ -217,7 +225,9 @@ export function ScenarioEditor({
     // Extrair dados do produto
     const getProdutoData = (): Record<string, string> => {
       const data =
-        scenarioToEdit?.produtoData || scenarioToEdit?.produto_padrao;
+        scenarioToEdit?.ScenarioProduto ||
+        scenarioToEdit?.produtoData ||
+        scenarioToEdit?.produto_padrao;
       if (!data) return {};
       const d = data as Record<string, unknown>;
       return {
@@ -234,7 +244,9 @@ export function ScenarioEditor({
     // Extrair dados dos impostos
     const getImpostosData = (): Record<string, string> => {
       const data =
-        scenarioToEdit?.impostosData || scenarioToEdit?.impostos_padrao;
+        scenarioToEdit?.ScenarioImposto ||
+        scenarioToEdit?.impostosData ||
+        scenarioToEdit?.impostos_padrao;
       if (!data) return {};
       const d = data as Record<string, unknown>;
       return {
@@ -256,7 +268,8 @@ export function ScenarioEditor({
 
       // Flags
       editar_emitente: scenarioToEdit?.editar_emitente ?? false,
-      editar_destinatario: scenarioToEdit?.editar_destinatario ?? false,
+      editar_destinatario_pj: scenarioToEdit?.editar_destinatario_pj ?? false,
+      editar_destinatario_pf: scenarioToEdit?.editar_destinatario_pf ?? false,
       editar_produtos: scenarioToEdit?.editar_produtos ?? false,
       editar_impostos: scenarioToEdit?.editar_impostos ?? false,
       editar_data: scenarioToEdit?.editar_data ?? false,
@@ -283,13 +296,15 @@ export function ScenarioEditor({
 
       // CST Mappings
       cstMappings:
-        scenarioToEdit?.cstMappings?.map((m) => ({
-          cfop: m.cfop,
-          icms: m.icms ?? "",
-          ipi: m.ipi ?? "",
-          pis: m.pis ?? "",
-          cofins: m.cofins ?? "",
-        })) ?? [],
+        (scenarioToEdit?.CstMapping || scenarioToEdit?.cstMappings)?.map(
+          (m) => ({
+            cfop: m.cfop,
+            icms: m.icms ?? "",
+            ipi: m.ipi ?? "",
+            pis: m.pis ?? "",
+            cofins: m.cofins ?? "",
+          })
+        ) ?? [],
     };
   }, [profileId, scenarioToEdit]); // Agora depende do objeto completo
 
@@ -315,11 +330,11 @@ export function ScenarioEditor({
   const watchAlterarSerie = form.watch("alterar_serie");
   const watchAlterarCuf = form.watch("alterar_cUF");
   const watchEditarEmitente = form.watch("editar_emitente");
-  const watchEditarDestinatario = form.watch("editar_destinatario");
+  const watchEditarDestinatarioPJ = form.watch("editar_destinatario_pj");
+  const watchEditarDestinatarioPF = form.watch("editar_destinatario_pf");
   const watchEditarProdutos = form.watch("editar_produtos");
   const watchEditarImpostos = form.watch("editar_impostos");
   const watchEditarCst = form.watch("editar_cst");
-  const watchTipoPessoa = form.watch("destinatarioData.tipoPessoa") || "PJ";
 
   // Estados para loading das buscas
   const [loadingCep, setLoadingCep] = useState<
@@ -685,16 +700,52 @@ export function ScenarioEditor({
 
                       <FormField
                         control={form.control}
-                        name="editar_destinatario"
+                        name="editar_destinatario_pj"
                         render={({ field }) => (
                           <FormItem className="flex items-center justify-between rounded-lg border p-2">
                             <FormLabel className="text-sm">
-                              Editar Destinatário
+                              Editar Destinatário PJ
                             </FormLabel>
                             <FormControl>
                               <Switch
                                 checked={field.value}
-                                onCheckedChange={field.onChange}
+                                onCheckedChange={(checked) => {
+                                  field.onChange(checked);
+                                  // Se ativar PJ, desativa PF
+                                  if (checked) {
+                                    form.setValue(
+                                      "editar_destinatario_pf",
+                                      false
+                                    );
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="editar_destinatario_pf"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between rounded-lg border p-2">
+                            <FormLabel className="text-sm">
+                              Editar Destinatário PF
+                            </FormLabel>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={(checked) => {
+                                  field.onChange(checked);
+                                  // Se ativar PF, desativa PJ
+                                  if (checked) {
+                                    form.setValue(
+                                      "editar_destinatario_pj",
+                                      false
+                                    );
+                                  }
+                                }}
                               />
                             </FormControl>
                           </FormItem>
@@ -1232,43 +1283,31 @@ export function ScenarioEditor({
 
                   {/* ─────────────── ABA DESTINATÁRIO ─────────────── */}
                   <TabsContent value="destinatario" className="space-y-4 mt-0">
-                    {!watchEditarDestinatario && (
-                      <p className="text-sm text-muted-foreground p-4 border rounded-lg">
-                        Ative a opção &quot;Editar Destinatário&quot; na aba
-                        Geral para configurar os dados.
-                      </p>
-                    )}
+                    {!watchEditarDestinatarioPJ &&
+                      !watchEditarDestinatarioPF && (
+                        <p className="text-sm text-muted-foreground p-4 border rounded-lg">
+                          Ative a opção &quot;Editar Destinatário PJ&quot; ou
+                          &quot;Editar Destinatário PF&quot; na aba Geral para
+                          configurar os dados.
+                        </p>
+                      )}
 
-                    {watchEditarDestinatario && (
+                    {(watchEditarDestinatarioPJ ||
+                      watchEditarDestinatarioPF) && (
                       <div className="space-y-4">
-                        {/* Seletor PJ/PF */}
-                        <div className="grid grid-cols-3 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="destinatarioData.tipoPessoa"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Tipo de Pessoa</FormLabel>
-                                <FormControl>
-                                  <select
-                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                    value={field.value || "PJ"}
-                                    onChange={field.onChange}
-                                  >
-                                    <option value="PJ">
-                                      Pessoa Jurídica (CNPJ)
-                                    </option>
-                                    <option value="PF">
-                                      Pessoa Física (CPF)
-                                    </option>
-                                  </select>
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
+                        {/* Indicador do tipo selecionado */}
+                        <div className="p-3 bg-muted rounded-lg">
+                          <span className="text-sm font-medium">
+                            Tipo:{" "}
+                            {watchEditarDestinatarioPJ
+                              ? "Pessoa Jurídica (CNPJ)"
+                              : "Pessoa Física (CPF)"}
+                          </span>
+                        </div>
 
-                          {/* CNPJ - apenas para PJ */}
-                          {watchTipoPessoa === "PJ" && (
+                        {/* Campos para PJ */}
+                        <div className="grid grid-cols-3 gap-4">
+                          {watchEditarDestinatarioPJ && (
                             <FormField
                               control={form.control}
                               name="destinatarioData.cnpj"
@@ -1318,7 +1357,7 @@ export function ScenarioEditor({
                           )}
 
                           {/* CPF - apenas para PF */}
-                          {watchTipoPessoa === "PF" && (
+                          {watchEditarDestinatarioPF && (
                             <FormField
                               control={form.control}
                               name="destinatarioData.cpf"
@@ -1356,7 +1395,7 @@ export function ScenarioEditor({
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>
-                                  {watchTipoPessoa === "PJ"
+                                  {watchEditarDestinatarioPJ
                                     ? "Razão Social"
                                     : "Nome Completo"}
                                 </FormLabel>
@@ -1369,7 +1408,7 @@ export function ScenarioEditor({
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                          {watchTipoPessoa === "PJ" && (
+                          {watchEditarDestinatarioPJ && (
                             <FormField
                               control={form.control}
                               name="destinatarioData.IE"

@@ -4,7 +4,8 @@ interface ScenarioDB {
   name: string;
   active: boolean;
   editar_emitente: boolean;
-  editar_destinatario: boolean;
+  editar_destinatario_pj: boolean;
+  editar_destinatario_pf: boolean;
   editar_produtos: boolean;
   editar_impostos: boolean;
   editar_data: boolean;
@@ -26,13 +27,21 @@ interface ScenarioDB {
   produto_padrao?: Record<string, unknown> | null;
   impostos_padrao?: Record<string, unknown> | null;
 
+  // Nomes camelCase (uso interno)
   emitenteData?: ScenarioEmitenteDB | null;
   destinatarioData?: ScenarioDestinatarioDB | null;
   produtoData?: ScenarioProdutoDB | null;
   impostosData?: ScenarioImpostoDB | null;
+  cstMappings?: CstMappingDB[];
+  taxReformRules?: TaxReformRuleDB[];
 
-  cstMappings: CstMappingDB[];
-  taxReformRules: TaxReformRuleDB[];
+  // Nomes PascalCase (retornados pelo Prisma)
+  ScenarioEmitente?: ScenarioEmitenteDB | null;
+  ScenarioDestinatario?: ScenarioDestinatarioDB | null;
+  ScenarioProduto?: ScenarioProdutoDB | null;
+  ScenarioImposto?: ScenarioImpostoDB | null;
+  CstMapping?: CstMappingDB[];
+  TaxReformRule?: TaxReformRuleDB[];
 }
 
 interface CstMappingDB {

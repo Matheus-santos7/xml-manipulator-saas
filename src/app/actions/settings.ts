@@ -5,6 +5,86 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Scenario, Prisma } from "@prisma/client";
 
+// --- Sub-schemas de Validação ---
+const emitenteSchema = z
+  .object({
+    cnpj: z.string().optional().nullable(),
+    CNPJ: z.string().optional().nullable(),
+    xNome: z.string().optional().nullable(),
+    xLgr: z.string().optional().nullable(),
+    nro: z.string().optional().nullable(),
+    xCpl: z.string().optional().nullable(),
+    xBairro: z.string().optional().nullable(),
+    xMun: z.string().optional().nullable(),
+    UF: z.string().optional().nullable(),
+    CEP: z.string().optional().nullable(),
+    fone: z.string().optional().nullable(),
+    IE: z.string().optional().nullable(),
+  })
+  .transform((data) => ({
+    cnpj: data.cnpj ?? data.CNPJ,
+    xNome: data.xNome,
+    xLgr: data.xLgr,
+    nro: data.nro,
+    xCpl: data.xCpl,
+    xBairro: data.xBairro,
+    xMun: data.xMun,
+    UF: data.UF,
+    CEP: data.CEP,
+    fone: data.fone,
+    IE: data.IE,
+  }));
+
+const destinatarioSchema = z
+  .object({
+    cnpj: z.string().optional().nullable(),
+    CNPJ: z.string().optional().nullable(),
+    cpf: z.string().optional().nullable(),
+    CPF: z.string().optional().nullable(),
+    xNome: z.string().optional().nullable(),
+    IE: z.string().optional().nullable(),
+    xLgr: z.string().optional().nullable(),
+    nro: z.string().optional().nullable(),
+    xBairro: z.string().optional().nullable(),
+    xMun: z.string().optional().nullable(),
+    UF: z.string().optional().nullable(),
+    CEP: z.string().optional().nullable(),
+    fone: z.string().optional().nullable(),
+  })
+  .transform((data) => ({
+    cnpj: data.cnpj ?? data.CNPJ,
+    cpf: data.cpf ?? data.CPF,
+    xNome: data.xNome,
+    IE: data.IE,
+    xLgr: data.xLgr,
+    nro: data.nro,
+    xBairro: data.xBairro,
+    xMun: data.xMun,
+    UF: data.UF,
+    CEP: data.CEP,
+    fone: data.fone,
+  }));
+
+const produtoSchema = z.object({
+  xProd: z.string().optional().nullable(),
+  cEAN: z.string().optional().nullable(),
+  cProd: z.string().optional().nullable(),
+  NCM: z.string().optional().nullable(),
+  CEST: z.string().optional().nullable(),
+  EXTIPI: z.string().optional().nullable(),
+  CFOP: z.string().optional().nullable(),
+});
+
+const impostoSchema = z.object({
+  pFCP: z.string().optional().nullable(),
+  pICMS: z.string().optional().nullable(),
+  pICMSUFDest: z.string().optional().nullable(),
+  pICMSInter: z.string().optional().nullable(),
+  pPIS: z.string().optional().nullable(),
+  pCOFINS: z.string().optional().nullable(),
+  pIPI: z.string().optional().nullable(),
+});
+
 // --- Schema de Validação do Cenário ---
 const scenarioSchema = z.object({
   id: z.string().optional(),
@@ -16,7 +96,8 @@ const scenarioSchema = z.object({
   alterar_serie: z.boolean().optional(),
   alterar_cUF: z.boolean().optional(),
   editar_emitente: z.boolean().optional(),
-  editar_destinatario: z.boolean().optional(),
+  editar_destinatario_pj: z.boolean().optional(),
+  editar_destinatario_pf: z.boolean().optional(),
   editar_produtos: z.boolean().optional(),
   editar_impostos: z.boolean().optional(),
   editar_refNFe: z.boolean().optional(),
@@ -114,7 +195,8 @@ export async function saveScenario(data: SaveScenarioInput) {
     editar_impostos: !!data.editar_impostos,
     editar_refNFe: !!data.editar_refNFe,
     editar_cst: !!data.editar_cst,
-    editar_destinatario: !!data.editar_destinatario,
+    editar_destinatario_pj: !!data.editar_destinatario_pj,
+    editar_destinatario_pf: !!data.editar_destinatario_pf,
     zerar_ipi_remessa_retorno: !!data.zerar_ipi_remessa_retorno,
     zerar_ipi_venda: !!data.zerar_ipi_venda,
     aplicar_reducao_aliq: !!data.aplicar_reducao_aliq,
@@ -137,83 +219,50 @@ export async function saveScenario(data: SaveScenarioInput) {
 
   // Persistir emitente normalizado
   if (emitenteObj) {
-    const e = {
-      cnpj: emitenteObj.CNPJ ?? emitenteObj.cnpj,
-      xNome: emitenteObj.xNome,
-      xLgr: emitenteObj.xLgr,
-      nro: emitenteObj.nro,
-      xCpl: emitenteObj.xCpl,
-      xBairro: emitenteObj.xBairro,
-      xMun: emitenteObj.xMun,
-      UF: emitenteObj.UF,
-      CEP: emitenteObj.CEP,
-      fone: emitenteObj.fone,
-      IE: emitenteObj.IE,
-    };
-    await db.scenarioEmitente.upsert({
-      where: { scenarioId },
-      create: { scenarioId, ...e },
-      update: { ...e },
-    });
+    const parsedEmitente = emitenteSchema.safeParse(emitenteObj);
+    if (parsedEmitente.success) {
+      await db.scenarioEmitente.upsert({
+        where: { scenarioId },
+        create: { scenarioId, ...parsedEmitente.data },
+        update: parsedEmitente.data,
+      });
+    }
   }
 
   // Persistir destinatário normalizado
   if (destinatarioObj) {
-    const d = {
-      tipoPessoa: destinatarioObj.tipoPessoa,
-      cnpj: destinatarioObj.CNPJ ?? destinatarioObj.cnpj,
-      cpf: destinatarioObj.cpf,
-      xNome: destinatarioObj.xNome,
-      IE: destinatarioObj.IE,
-      xLgr: destinatarioObj.xLgr,
-      nro: destinatarioObj.nro,
-      xBairro: destinatarioObj.xBairro,
-      xMun: destinatarioObj.xMun,
-      UF: destinatarioObj.UF,
-      CEP: destinatarioObj.CEP,
-      fone: destinatarioObj.fone,
-    };
-    await db.scenarioDestinatario.upsert({
-      where: { scenarioId },
-      create: { scenarioId, ...d },
-      update: { ...d },
-    });
+    const parsedDestinatario = destinatarioSchema.safeParse(destinatarioObj);
+    if (parsedDestinatario.success) {
+      await db.scenarioDestinatario.upsert({
+        where: { scenarioId },
+        create: { scenarioId, ...parsedDestinatario.data },
+        update: parsedDestinatario.data,
+      });
+    }
   }
 
   // Persistir produto padrão
   if (produtoObj) {
-    const p = {
-      xProd: produtoObj.xProd,
-      cEAN: produtoObj.cEAN,
-      cProd: produtoObj.cProd,
-      NCM: produtoObj.NCM,
-      CEST: produtoObj.CEST,
-      EXTIPI: produtoObj.EXTIPI,
-      CFOP: produtoObj.CFOP,
-    };
-    await db.scenarioProduto.upsert({
-      where: { scenarioId },
-      create: { scenarioId, ...p },
-      update: { ...p },
-    });
+    const parsedProduto = produtoSchema.safeParse(produtoObj);
+    if (parsedProduto.success) {
+      await db.scenarioProduto.upsert({
+        where: { scenarioId },
+        create: { scenarioId, ...parsedProduto.data },
+        update: parsedProduto.data,
+      });
+    }
   }
 
   // Persistir impostos padrão
   if (impostosObj) {
-    const i = {
-      pFCP: impostosObj.pFCP,
-      pICMS: impostosObj.pICMS,
-      pICMSUFDest: impostosObj.pICMSUFDest,
-      pICMSInter: impostosObj.pICMSInter,
-      pPIS: impostosObj.pPIS,
-      pCOFINS: impostosObj.pCOFINS,
-      pIPI: impostosObj.pIPI,
-    };
-    await db.scenarioImposto.upsert({
-      where: { scenarioId },
-      create: { scenarioId, ...i },
-      update: { ...i },
-    });
+    const parsedImposto = impostoSchema.safeParse(impostosObj);
+    if (parsedImposto.success) {
+      await db.scenarioImposto.upsert({
+        where: { scenarioId },
+        create: { scenarioId, ...parsedImposto.data },
+        update: parsedImposto.data,
+      });
+    }
   }
 
   // Persistir cstMappings (substitui os anteriores)

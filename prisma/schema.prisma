@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Account {
-  id                String  @id
+  id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
@@ -26,7 +26,7 @@ model Account {
 }
 
 model CstMapping {
-  id         String   @id
+  id         String   @id @default(cuid())
   scenarioId String
   cfop       String
   icms       String?
@@ -37,7 +37,7 @@ model CstMapping {
 }
 
 model Profile {
-  id          String     @id
+  id          String     @id @default(cuid())
   workspaceId String
   name        String
   cnpj        String     @unique
@@ -48,7 +48,7 @@ model Profile {
 }
 
 model Scenario {
-  id                        String                @id
+  id                        String                @id @default(cuid())
   profileId                 String
   name                      String
   active                    Boolean               @default(true)
@@ -58,7 +58,8 @@ model Scenario {
   editar_data               Boolean               @default(false)
   editar_refNFe             Boolean               @default(false)
   editar_cst                Boolean               @default(false)
-  editar_destinatario       Boolean               @default(false)
+  editar_destinatario_pj    Boolean               @default(false)
+  editar_destinatario_pf    Boolean               @default(false)
   zerar_ipi_remessa_retorno Boolean               @default(false)
   zerar_ipi_venda           Boolean               @default(false)
   reforma_tributaria        Boolean               @default(false)
@@ -80,9 +81,10 @@ model Scenario {
 }
 
 model ScenarioDestinatario {
-  id         String   @id
+  id         String   @id @default(cuid())
   scenarioId String   @unique
   cnpj       String?
+  cpf        String?
   xNome      String?
   IE         String?
   xLgr       String?
@@ -92,13 +94,11 @@ model ScenarioDestinatario {
   UF         String?
   CEP        String?
   fone       String?
-  cpf        String?
-  tipoPessoa String?
   Scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 }
 
 model ScenarioEmitente {
-  id         String   @id
+  id         String   @id @default(cuid())
   scenarioId String   @unique
   cnpj       String?
   xNome      String?
@@ -115,7 +115,7 @@ model ScenarioEmitente {
 }
 
 model ScenarioImposto {
-  id          String   @id
+  id          String   @id @default(cuid())
   scenarioId  String   @unique
   pFCP        String?
   pICMS       String?
@@ -128,7 +128,7 @@ model ScenarioImposto {
 }
 
 model ScenarioProduto {
-  id         String   @id
+  id         String   @id @default(cuid())
   scenarioId String   @unique
   xProd      String?
   cEAN       String?
@@ -141,7 +141,7 @@ model ScenarioProduto {
 }
 
 model Session {
-  id           String   @id
+  id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
@@ -149,7 +149,7 @@ model Session {
 }
 
 model TaxReformRule {
-  id           String   @id
+  id           String   @id @default(cuid())
   scenarioId   String
   pIBSUF       String?
   pIBSMun      String?
@@ -164,7 +164,7 @@ model TaxReformRule {
 }
 
 model User {
-  id              String            @id
+  id              String            @id @default(cuid())
   name            String?
   email           String?           @unique
   emailVerified   DateTime?
@@ -175,7 +175,7 @@ model User {
 }
 
 model Workspace {
-  id              String            @id
+  id              String            @id @default(cuid())
   name            String
   slug            String            @unique
   Profile         Profile[]
@@ -183,7 +183,7 @@ model Workspace {
 }
 
 model WorkspaceMember {
-  id          String    @id
+  id          String    @id @default(cuid())
   workspaceId String
   userId      String
   role        String    @default("member")
