@@ -2,8 +2,66 @@
 
 import { PrismaClient } from "@prisma/client";
 import { processarRenomeacao, gerarResumoRenomeacao } from "@/lib/xmlRenamer";
+import { getChaveInfoForMapping } from "@/lib/xmlExtractor";
+import {
+  prepararMapeamentosDeChaves,
+  type DocumentoInfo,
+  type ResultadoMapeamento,
+} from "@/lib/chaveHelper";
+import { editarChavesEmLote, type ResultadoEdicao } from "@/lib/xmlEditor";
 
 const prisma = new PrismaClient();
+
+/**
+ * Prepara os mapeamentos de chaves antigas para novas
+ * Baseado na função _prepara_mapeamentos do Python
+ */
+async function prepararMapeamentosChaves(
+  files: Array<{ name: string; content: string }>,
+  scenario: {
+    editar_emitente: boolean;
+    editar_data: boolean;
+    alterar_cUF: boolean;
+    alterar_serie: boolean;
+    nova_data?: string | null;
+    novo_cUF?: string | null;
+    nova_serie?: string | null;
+    ScenarioEmitente?: { cnpj?: string | null } | null;
+  }
+): Promise<ResultadoMapeamento> {
+  // Extrai informações de todos os documentos
+  const documentos: DocumentoInfo[] = [];
+
+  for (const file of files) {
+    const info = getChaveInfoForMapping(file.content, file.name);
+    if (info && info.chave.length >= 43) {
+      documentos.push(info);
+    }
+  }
+
+  // Prepara os dados para o mapeamento
+  const alterarEmitente = scenario.editar_emitente;
+  const novoCnpj = scenario.ScenarioEmitente?.cnpj || null;
+  const alterarData = scenario.editar_data;
+  const novaData = scenario.nova_data || null;
+  const alterarUF = scenario.alterar_cUF;
+  const novoUF = scenario.novo_cUF || null;
+  const alterarSerie = scenario.alterar_serie;
+  const novaSerie = scenario.nova_serie || null;
+
+  // Chama a função de mapeamento
+  return prepararMapeamentosDeChaves(
+    documentos,
+    alterarEmitente,
+    novoCnpj,
+    alterarData,
+    novaData,
+    alterarUF,
+    novoUF,
+    alterarSerie,
+    novaSerie
+  );
+}
 
 /**
  * Função responsável por receber os arquivos XML do frontend e logar no console.
@@ -191,10 +249,232 @@ export async function processarArquivosXml(formData: FormData) {
   console.log(gerarResumoRenomeacao(renameReport));
   console.log("");
 
-  // ========== ETAPA 2: MANIPULAÇÃO E EDIÇÃO DOS ARQUIVOS (EM DESENVOLVIMENTO) ==========
-  // console.log(`${"=".repeat(60)}`);
-  // console.log(`ETAPA 2: MANIPULAÇÃO E EDIÇÃO DOS ARQUIVOS`);
-  // console.log(`${"=".repeat(60)}\n`);
+  // ========== ETAPA 2: PREPARAÇÃO PARA MANIPULAÇÃO (MAPEAMENTO DE CHAVES) ==========
+  console.log(`${"=".repeat(60)}`);
+  console.log(`ETAPA 2: PREPARAÇÃO PARA MANIPULAÇÃO (MAPEAMENTO DE CHAVES)`);
+  console.log(`${"=".repeat(60)}\n`);
+
+  // Extrai informações de todos os documentos para mapeamento
+  const { chaveMapping, referenceMap, chaveVendaNova } =
+    await prepararMapeamentosChaves(filesForProcessing, scenario);
+
+  console.log(`Resumo do Mapeamento:`);
+  console.log(`   Chaves mapeadas: ${Object.keys(chaveMapping).length}`);
+  console.log(`   Referências mapeadas: ${Object.keys(referenceMap).length}`);
+  if (chaveVendaNova) {
+    console.log(`   Chave da Venda Nova identificada`);
+  }
+
+  // Exibe detalhes das chaves mapeadas se houver alterações
+  if (Object.keys(chaveMapping).length > 0) {
+    console.log(`\nDetalhes das Chaves Alteradas:\n`);
+    let count = 1;
+    for (const [chaveAntiga, chaveNova] of Object.entries(chaveMapping)) {
+      const numeroNota = chaveAntiga.substring(25, 34).replace(/^0+/, "");
+      console.log(`   ${count}. NFe/CTe nº ${numeroNota}:`);
+      console.log(`      Antiga: ${chaveAntiga}`);
+      console.log(`      Nova:   ${chaveNova}`);
+
+      // Mostra o que mudou
+      const mudancas: string[] = [];
+      if (chaveAntiga.substring(0, 2) !== chaveNova.substring(0, 2)) {
+        mudancas.push(
+          `UF: ${chaveAntiga.substring(0, 2)} → ${chaveNova.substring(0, 2)}`
+        );
+      }
+      if (chaveAntiga.substring(2, 6) !== chaveNova.substring(2, 6)) {
+        mudancas.push(
+          `Data: ${chaveAntiga.substring(2, 6)} → ${chaveNova.substring(2, 6)}`
+        );
+      }
+      if (chaveAntiga.substring(6, 20) !== chaveNova.substring(6, 20)) {
+        mudancas.push(
+          `CNPJ: ${chaveAntiga.substring(6, 20)} → ${chaveNova.substring(
+            6,
+            20
+          )}`
+        );
+      }
+      if (chaveAntiga.substring(22, 25) !== chaveNova.substring(22, 25)) {
+        mudancas.push(
+          `Série: ${chaveAntiga.substring(22, 25)} → ${chaveNova.substring(
+            22,
+            25
+          )}`
+        );
+      }
+
+      if (mudancas.length > 0) {
+        console.log(`      Alterações: ${mudancas.join(", ")}`);
+      }
+      console.log();
+      count++;
+    }
+  }
+
+  // Exibe detalhes das referências se houver
+  if (Object.keys(referenceMap).length > 0) {
+    console.log(`Referências entre Documentos:\n`);
+    for (const [chaveDoc, chaveRef] of Object.entries(referenceMap)) {
+      const numDoc = chaveDoc.substring(25, 34).replace(/^0+/, "");
+      const numRef = chaveRef.substring(25, 34).replace(/^0+/, "");
+      console.log(`   NFe nº ${numDoc} referencia NFe nº ${numRef}`);
+    }
+    console.log();
+  }
+
+  console.log(`${"=".repeat(60)}\n`);
+
+  // ========== ETAPA 3: MANIPULAÇÃO E EDIÇÃO DOS ARQUIVOS ==========
+  console.log(`${"=".repeat(60)}`);
+  console.log(`ETAPA 3: MANIPULAÇÃO E EDIÇÃO DOS ARQUIVOS`);
+  console.log(`${"=".repeat(60)}\n`);
+
+  // Sub-etapa 3.1: Edita as chaves nos XMLs usando os mapeamentos da ETAPA 2
+  console.log(`Sub-etapa 3.1: Alteração de Chaves, Datas e Atributos\n`);
+
+  const resultadosEdicao = editarChavesEmLote(
+    filesForProcessing,
+    chaveMapping,
+    referenceMap,
+    chaveVendaNova,
+    scenario.nova_data || null,
+    scenario.novo_cUF || null,
+    scenario.nova_serie || null
+  );
+
+  // Exibe resumo da edição
+  let totalEditados = 0;
+  let totalErros = 0;
+  let totalSemAlteracao = 0;
+
+  console.log(`Resumo da Edição:\n`);
+
+  for (const resultado of resultadosEdicao) {
+    if (!resultado.sucesso) {
+      totalErros++;
+      console.log(`[ERRO] ${resultado.nomeArquivo}: ${resultado.erro}`);
+    } else if (resultado.alteracoes.includes("Nenhuma alteração necessária")) {
+      totalSemAlteracao++;
+    } else {
+      totalEditados++;
+      console.log(`\n[OK] ${resultado.tipo}: ${resultado.nomeArquivo}`);
+      for (const alteracao of resultado.alteracoes) {
+        console.log(`   - ${alteracao}`);
+      }
+    }
+  }
+
+  console.log(`\nTotais:`);
+  console.log(`   Arquivos editados: ${totalEditados}`);
+  console.log(`   Sem alteração: ${totalSemAlteracao}`);
+  console.log(`   Erros: ${totalErros}`);
+
+  // Atualiza o conteúdo dos arquivos com as edições
+  const arquivosEditados = filesForProcessing.map((file, index) => {
+    const resultado = resultadosEdicao[index];
+    return {
+      ...file,
+      content: resultado.conteudoEditado || file.content,
+    };
+  });
+
+  // Sub-etapa 3.2: Atualização de Referências entre Notas
+  console.log(`\n${"─".repeat(60)}`);
+  console.log(`Sub-etapa 3.2: Atualização de Referências (refNFe e chave)\n`);
+
+  // Converte chaveMapping para Map
+  const chaveMappingMap = new Map(Object.entries(chaveMapping));
+
+  if (chaveMappingMap.size > 0) {
+    console.log(
+      `Aplicando substituição de chaves antigas por novas em todas as referências...\n`
+    );
+
+    // Para cada arquivo, substitui TODAS as ocorrências de chaves antigas por novas
+    // Isso garante que referências em tags <refNFe>, <chave>, etc sejam atualizadas
+    const resultadosReferenciamento: Array<{
+      nomeArquivo: string;
+      alteracoes: string[];
+    }> = [];
+
+    for (let i = 0; i < arquivosEditados.length; i++) {
+      const arquivo = arquivosEditados[i];
+      let xmlAtualizado = arquivo.content;
+      const alteracoesRef: string[] = [];
+
+      // Para cada chave mapeada, substitui TODAS as ocorrências no XML
+      chaveMappingMap.forEach((novaChave, chaveAntiga) => {
+        // Verifica se a chave antiga aparece no XML (em qualquer lugar)
+        if (xmlAtualizado.includes(chaveAntiga)) {
+          // Regex global para substituir em tags <refNFe>, <chave>, ou qualquer outra
+          const regexChaveEmTags = new RegExp(`(>)${chaveAntiga}(<)`, "g");
+
+          const ocorrenciasBefore = (
+            xmlAtualizado.match(regexChaveEmTags) || []
+          ).length;
+
+          if (ocorrenciasBefore > 0) {
+            xmlAtualizado = xmlAtualizado.replace(
+              regexChaveEmTags,
+              `$1${novaChave}$2`
+            );
+
+            const numNota = chaveAntiga.substring(25, 34).replace(/^0+/, "");
+            const numNotaNova = novaChave.substring(25, 34).replace(/^0+/, "");
+
+            alteracoesRef.push(
+              `Referência atualizada: nota nº ${numNota} → ${numNotaNova} (${ocorrenciasBefore} ocorrência(s))`
+            );
+
+            console.log(
+              `   [${arquivo.name}] Substituiu chave ...${chaveAntiga.slice(
+                -10
+              )} por ...${novaChave.slice(-10)} (${ocorrenciasBefore}x)`
+            );
+          }
+        }
+      });
+
+      // Se houve alterações, atualiza o conteúdo
+      if (alteracoesRef.length > 0) {
+        arquivosEditados[i] = {
+          ...arquivo,
+          content: xmlAtualizado,
+        };
+
+        resultadosReferenciamento.push({
+          nomeArquivo: arquivo.name,
+          alteracoes: alteracoesRef,
+        });
+
+        // Adiciona as alterações ao resultado da edição
+        resultadosEdicao[i].alteracoes.push(...alteracoesRef);
+      }
+    }
+
+    // Exibe resumo
+    console.log();
+    if (resultadosReferenciamento.length > 0) {
+      console.log(`Resumo de Referências Atualizadas:\n`);
+      for (const resultado of resultadosReferenciamento) {
+        console.log(`   ✓ ${resultado.nomeArquivo}:`);
+        for (const alteracao of resultado.alteracoes) {
+          console.log(`     • ${alteracao}`);
+        }
+      }
+    } else {
+      console.log(
+        `Nenhuma referência precisou ser atualizada (notas não se referenciam)\n`
+      );
+    }
+  } else {
+    console.log(
+      `Nenhuma chave foi alterada, não há referências para atualizar\n`
+    );
+  }
+
+  console.log(`\n${"=".repeat(60)}\n`);
 
   // Criar mapa de renomeação por nome de arquivo original
   const renameMap = new Map<
@@ -213,14 +493,47 @@ export async function processarArquivosXml(formData: FormData) {
     success: true,
     message: "Arquivos processados com sucesso.",
     renameReport: renameReport,
-    processedFiles: filesForProcessing.map((file) => {
+    chaveMapping: chaveMapping,
+    referenceMap: referenceMap,
+    edicaoReport: {
+      totalEditados,
+      totalErros,
+      totalSemAlteracao,
+      detalhes: resultadosEdicao,
+    },
+    processedFiles: arquivosEditados.map((file, index) => {
       const renameInfo = renameMap.get(file.name);
+      const edicaoInfo = resultadosEdicao[index];
+
+      // Combina logs de renomeação e edição
+      const logs: string[] = [];
+
+      // Adiciona log de renomeação
+      if (renameInfo?.message) {
+        logs.push(renameInfo.message);
+      }
+
+      // Adiciona logs de edição
+      if (edicaoInfo && edicaoInfo.sucesso) {
+        if (
+          edicaoInfo.alteracoes.length > 0 &&
+          !edicaoInfo.alteracoes.includes("Nenhuma alteração necessária")
+        ) {
+          logs.push(`Edições realizadas (${edicaoInfo.tipo}):`);
+          edicaoInfo.alteracoes.forEach((alteracao) => {
+            logs.push(`  • ${alteracao}`);
+          });
+        }
+      } else if (edicaoInfo && !edicaoInfo.sucesso) {
+        logs.push(`[ERRO na edição] ${edicaoInfo.erro}`);
+      }
+
       return {
         originalName: file.name,
         newName: renameInfo?.newName || file.name,
         content: file.content,
         status: renameInfo?.status === "renamed" ? "success" : "skipped",
-        logs: renameInfo?.message ? [renameInfo.message] : [],
+        logs: logs,
       };
     }),
   };

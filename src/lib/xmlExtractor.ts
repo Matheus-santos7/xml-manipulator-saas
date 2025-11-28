@@ -243,6 +243,129 @@ export function getEventoInfo(
 }
 
 /**
+ * Extrai informações para mapeamento de chaves
+ * Equivalente a _get_chave_info_for_mapping() do Python
+ */
+export function getChaveInfoForMapping(
+  xmlContent: string,
+  fileName: string
+): {
+  doc_type: "NFe" | "CTe" | "Inutilizacao";
+  caminho_completo: string;
+  chave: string;
+  emit_cnpj: string;
+  nfe_number: string | null;
+  ref_nfe: string | null;
+} | null {
+  try {
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: "@_",
+    });
+
+    const parsed = parser.parse(xmlContent);
+
+    // Tenta NF-e
+    let infNFe = findElement(parsed, "nfeProc/NFe/infNFe");
+    if (!infNFe) {
+      infNFe = findElement(parsed, "NFe/infNFe");
+    }
+
+    if (infNFe) {
+      const idAttr = infNFe["@_Id"] || infNFe["@_id"];
+      const chave = idAttr ? idAttr.replace(/^NFe/, "") : "";
+
+      if (chave && chave.length === 44) {
+        const ide = infNFe.ide;
+        const emit = infNFe.emit;
+
+        const cnpj = emit?.CNPJ || "";
+        const nfeNumber = ide?.nNF || null;
+
+        // Extrai referência de NFe
+        let refNFe: string | null = null;
+        const refNFeRaw = ide?.NFref?.refNFe;
+        if (refNFeRaw) {
+          if (typeof refNFeRaw === "string") {
+            refNFe = refNFeRaw;
+          } else if (Array.isArray(refNFeRaw) && refNFeRaw.length > 0) {
+            refNFe = String(refNFeRaw[0]);
+          } else if (typeof refNFeRaw === "object") {
+            refNFe = String(refNFeRaw);
+          }
+        }
+
+        return {
+          doc_type: "NFe",
+          caminho_completo: fileName,
+          chave: chave,
+          emit_cnpj: cnpj,
+          nfe_number: nfeNumber,
+          ref_nfe: refNFe,
+        };
+      }
+    }
+
+    // Tenta CT-e
+    let infCte = findElement(parsed, "cteProc/CTe/infCte");
+    if (!infCte) {
+      infCte = findElement(parsed, "CTe/infCte");
+    }
+
+    if (infCte) {
+      const idAttr = infCte["@_Id"] || infCte["@_id"];
+      const chave = idAttr ? idAttr.replace(/^CTe/, "") : "";
+
+      if (chave && chave.length === 44) {
+        // CTe usa 'rem' (remetente) em vez de 'emit'
+        const rem = infCte.rem;
+        const cnpj = rem?.CNPJ || "";
+
+        return {
+          doc_type: "CTe",
+          caminho_completo: fileName,
+          chave: chave,
+          emit_cnpj: cnpj,
+          nfe_number: null,
+          ref_nfe: null,
+        };
+      }
+    }
+
+    // Tenta Inutilização
+    let infInut = findElement(parsed, "procInutNFe/inutNFe/infInut");
+    if (!infInut) {
+      infInut = findElement(parsed, "procInutNFe/retInutNFe/infInut");
+    }
+    if (!infInut) {
+      infInut = findElement(parsed, "inutNFe/infInut");
+    }
+
+    if (infInut) {
+      const chaveId = infInut["@_Id"] || infInut["@_id"] || "";
+      const cnpj = infInut.CNPJ || "";
+
+      return {
+        doc_type: "Inutilizacao",
+        caminho_completo: fileName,
+        chave: chaveId,
+        emit_cnpj: cnpj,
+        nfe_number: null,
+        ref_nfe: null,
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error(
+      `[xmlExtractor] Erro ao extrair info para mapeamento de ${fileName}:`,
+      error
+    );
+    return null;
+  }
+}
+
+/**
  * Extrai informações básicas de múltiplos XMLs
  * Equivalente a _extrair_infos_xmls() do Python
  */
