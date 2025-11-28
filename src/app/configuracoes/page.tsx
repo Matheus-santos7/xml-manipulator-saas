@@ -7,8 +7,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScenarioEditor } from "@/components/settings/scenario-editor";
-import { ProfileForm } from "@/components/settings/profile-form";
+import { ScenarioEditor } from "@/components/configuracoes/scenario-editor";
+import { ProfileForm } from "@/components/configuracoes/profile-form";
 import { Building2, FileCog } from "lucide-react";
 
 // Definimos o tipo como uma Promise (Next.js 15+)

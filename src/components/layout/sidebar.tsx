@@ -13,7 +13,7 @@ export function Sidebar() {
   const routes = [
     {
       href: "/manipulador",
-      label: "Processador XML",
+      label: "Manipulador XML",
       icon: FileCode,
       active: pathname.includes("/manipulador"),
     },
