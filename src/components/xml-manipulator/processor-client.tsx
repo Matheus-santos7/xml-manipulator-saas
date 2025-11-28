@@ -31,6 +31,14 @@ interface ScenarioOption {
   name: string;
 }
 
+interface ProcessedFile {
+  originalName: string;
+  newName: string;
+  content: string;
+  status: string;
+  logs: string[];
+}
+
 export default function XmlProcessorClient({
   scenarios,
 }: {
@@ -39,7 +47,7 @@ export default function XmlProcessorClient({
   const [files, setFiles] = useState<File[]>([]);
   const [selectedScenario, setSelectedScenario] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processedData, setProcessedData] = useState<any[]>([]);
+  const [processedData, setProcessedData] = useState<ProcessedFile[]>([]);
 
   // Configuração do Drag & Drop
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -56,7 +64,7 @@ export default function XmlProcessorClient({
     }
 
     setFiles((prev) => [...prev, ...xmls]);
-    setProcessedData([]); // Limpa resultados anteriores
+    setProcessedData([]);
     toast.info("Arquivos adicionados", {
       description: `${xmls.length} arquivos prontos.`,
     });
@@ -83,13 +91,18 @@ export default function XmlProcessorClient({
       const response = await processarArquivosXml(formData);
 
       if (response.success) {
+        // Atualiza os dados processados com os novos nomes dos arquivos
+        if (response.processedFiles) {
+          setProcessedData(response.processedFiles);
+        }
+
         toast.success("Processamento concluído", {
           description: response.message,
         });
       } else {
         toast.error("Erro no processamento", { description: response.message });
       }
-    } catch (error) {
+    } catch {
       toast.error("Erro Crítico", {
         description: "Falha na comunicação com o servidor.",
       });
@@ -105,9 +118,9 @@ export default function XmlProcessorClient({
       const outputFolder = zip.folder("processados");
 
       processedData.forEach((item) => {
-        if (item.status === "success") {
-          outputFolder?.file(item.newName, item.content);
-        }
+        // Usa o novo nome se foi renomeado, senão usa o nome original
+        const fileName = item.newName || item.originalName;
+        outputFolder?.file(fileName, item.content);
       });
 
       const logContent = processedData
@@ -126,7 +139,7 @@ export default function XmlProcessorClient({
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, `xmls_processados_${new Date().getTime()}.zip`);
       toast.success("Download iniciado!");
-    } catch (e) {
+    } catch {
       toast.error("Erro ao gerar ZIP");
     }
   };
@@ -230,51 +243,81 @@ export default function XmlProcessorClient({
             ) : (
               <ScrollArea className="h-[500px] w-full px-4">
                 <div className="divide-y divide-gray-100 pb-4">
-                  {processedData.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="py-4 hover:bg-slate-50 transition-colors rounded px-2"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          {item.status === "success" ? (
-                            <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
-                          ) : (
-                            <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-                          )}
-                          <div className="flex flex-col">
-                            <span className="font-medium text-sm text-gray-900">
-                              {item.newName}
-                            </span>
-                            {item.newName !== item.originalName && (
-                              <span className="text-xs text-gray-400 line-through">
-                                {item.originalName}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <Badge
-                          variant={
-                            item.status === "success"
-                              ? "default"
-                              : "destructive"
-                          }
-                        >
-                          {item.status === "success" ? "Sucesso" : "Erro"}
-                        </Badge>
-                      </div>
+                  {processedData
+                    .sort((a, b) => {
+                      // Extrai o número da nota do nome do arquivo (primeira parte antes do hífen)
+                      const getNumero = (name: string) => {
+                        const match = name.match(/^(\d+)/);
+                        return match ? parseInt(match[1], 10) : 999999;
+                      };
 
-                      {item.logs.length > 0 && (
-                        <div className="mt-2 ml-8 bg-slate-100 p-2 rounded text-xs font-mono text-slate-600 border border-slate-200">
-                          <ul className="list-disc pl-4 space-y-1">
-                            {item.logs.map((log: string, i: number) => (
-                              <li key={i}>{log}</li>
-                            ))}
-                          </ul>
+                      const numA = getNumero(a.newName || a.originalName);
+                      const numB = getNumero(b.newName || b.originalName);
+
+                      return numA - numB;
+                    })
+                    .map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="py-4 hover:bg-slate-50 transition-colors rounded px-2"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            {item.status === "success" ? (
+                              <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
+                            ) : item.status === "error" ? (
+                              <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+                            ) : (
+                              <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0" />
+                            )}
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm text-gray-900">
+                                {item.newName || item.originalName}
+                              </span>
+                              {item.newName &&
+                                item.newName !== item.originalName && (
+                                  <span className="text-xs text-gray-400 line-through">
+                                    {item.originalName}
+                                  </span>
+                                )}
+                            </div>
+                          </div>
+                          <Badge
+                            variant={
+                              item.status === "success"
+                                ? "default"
+                                : item.status === "error"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {item.status === "success"
+                              ? "Sucesso"
+                              : item.status === "error"
+                              ? "Erro"
+                              : "Pulado"}
+                          </Badge>
                         </div>
-                      )}
-                    </div>
-                  ))}
+
+                        {item.logs.length > 0 && (
+                          <div
+                            className={`mt-2 ml-8 p-2 rounded text-xs font-mono border ${
+                              item.status === "error"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : item.status === "skipped"
+                                ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                : "bg-slate-100 text-slate-600 border-slate-200"
+                            }`}
+                          >
+                            <ul className="list-disc pl-4 space-y-1">
+                              {item.logs.map((log: string, i: number) => (
+                                <li key={i}>{log}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                 </div>
               </ScrollArea>
             )}

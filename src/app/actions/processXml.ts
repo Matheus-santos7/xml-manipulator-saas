@@ -1,6 +1,8 @@
 "use server";
 
 import { PrismaClient } from "@prisma/client";
+import { processarRenomeacao, gerarResumoRenomeacao } from "@/lib/xmlRenamer";
+
 const prisma = new PrismaClient();
 
 /**
@@ -40,6 +42,8 @@ export async function processarArquivosXml(formData: FormData) {
   console.log(`CENÁRIO: ${scenario.name}`);
   console.log(`ID: ${scenarioId}`);
   console.log(`Quantidade de arquivos: ${files.length}\n`);
+
+  console.log(`${"=".repeat(60)}\n`);
 
   console.log(`${"─".repeat(60)}`);
   console.log(`FLAGS DE MANIPULAÇÃO ATIVAS:`);
@@ -164,8 +168,60 @@ export async function processarArquivosXml(formData: FormData) {
 
   console.log(`\n${"=".repeat(60)}\n`);
 
+  // ========== ETAPA 1: ORGANIZAÇÃO E RENOMEAÇÃO DOS ARQUIVOS ==========
+  // Preparar arquivos para processamento
+  const filesForProcessing: Array<{ name: string; content: string }> = [];
+
+  for (const file of files) {
+    try {
+      const content = await file.text();
+      filesForProcessing.push({
+        name: file.name,
+        content: content,
+      });
+    } catch (error) {
+      console.error(`Erro ao ler arquivo ${file.name}:`, error);
+    }
+  }
+
+  // Processar renomeação
+  const renameReport = processarRenomeacao(filesForProcessing);
+
+  // Exibir resumo da renomeação
+  console.log(gerarResumoRenomeacao(renameReport));
+  console.log("");
+
+  // ========== ETAPA 2: MANIPULAÇÃO E EDIÇÃO DOS ARQUIVOS (EM DESENVOLVIMENTO) ==========
+  // console.log(`${"=".repeat(60)}`);
+  // console.log(`ETAPA 2: MANIPULAÇÃO E EDIÇÃO DOS ARQUIVOS`);
+  // console.log(`${"=".repeat(60)}\n`);
+
+  // Criar mapa de renomeação por nome de arquivo original
+  const renameMap = new Map<
+    string,
+    { newName: string | null; status: string; message?: string }
+  >();
+  for (const detail of renameReport.details) {
+    renameMap.set(detail.originalName, {
+      newName: detail.newName,
+      status: detail.status,
+      message: detail.message,
+    });
+  }
+
   return {
     success: true,
-    message: "Arquivos recebidos e logados com sucesso.",
+    message: "Arquivos processados com sucesso.",
+    renameReport: renameReport,
+    processedFiles: filesForProcessing.map((file) => {
+      const renameInfo = renameMap.get(file.name);
+      return {
+        originalName: file.name,
+        newName: renameInfo?.newName || file.name,
+        content: file.content,
+        status: renameInfo?.status === "renamed" ? "success" : "skipped",
+        logs: renameInfo?.message ? [renameInfo.message] : [],
+      };
+    }),
   };
 }

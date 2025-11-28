@@ -135,3 +135,45 @@ export interface ProcessingReport {
   alterations: string[];
   newFileName?: string;
 }
+
+// Tipos para extração de informações de XMLs
+export interface NFeInfo {
+  tipo: "nfe";
+  caminhoCompleto: string;
+  nfeNumber: string;
+  cfop: string;
+  natOp: string;
+  refNFe: string | null;
+  xTexto: string;
+  chave: string;
+  emitCnpj: string;
+}
+
+export interface EventoInfo {
+  tipo: "cancelamento";
+  caminhoCompleto: string;
+  chaveCancelada: string;
+}
+
+export interface CTeInfo {
+  tipo: "cte";
+  caminhoCompleto: string;
+  cteNumber: string;
+  chave: string;
+  nfeChave: string | null; // Chave da NFe referenciada
+}
+
+// Tipos para resultado de renomeação
+export interface RenameResult {
+  originalName: string;
+  newName: string | null;
+  status: "renamed" | "skipped" | "error";
+  message?: string;
+}
+
+export interface RenameReport {
+  totalRenamed: number;
+  totalSkipped: number;
+  totalErrors: number;
+  details: RenameResult[];
+}
