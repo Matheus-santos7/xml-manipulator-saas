@@ -82,10 +82,9 @@ export default function XmlProcessorClient({
     try {
       const response = await processarArquivosXml(formData);
 
-      if (response.success && response.results) {
-        setProcessedData(response.results);
+      if (response.success) {
         toast.success("Processamento concluído", {
-          description: `${response.results.length} arquivos processados com sucesso.`,
+          description: response.message,
         });
       } else {
         toast.error("Erro no processamento", { description: response.message });

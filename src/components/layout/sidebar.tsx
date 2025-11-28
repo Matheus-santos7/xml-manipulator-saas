@@ -1,14 +1,14 @@
-'use client'
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { FileCode, Settings, FileCog, LogOut, User } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { FileCode, Settings, FileCog, LogOut, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   const routes = [
     {
@@ -23,13 +23,16 @@ export function Sidebar() {
       icon: Settings,
       active: pathname.includes("/configuracoes"),
     },
-  ]
+  ];
 
   return (
     <div className="flex h-full max-h-screen flex-col gap-2">
       {/* LOGO */}
       <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 bg-white">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
+        <Link
+          href="/"
+          className="flex items-center gap-2 font-bold text-xl text-primary"
+        >
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <FileCog className="h-5 w-5" />
           </div>
@@ -46,8 +49,8 @@ export function Sidebar() {
               href={route.href}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary",
-                route.active 
-                  ? "bg-primary/10 text-primary font-semibold border-r-4 border-primary rounded-r-none" 
+                route.active
+                  ? "bg-primary/10 text-primary font-semibold border-r-4 border-primary rounded-r-none"
                   : "text-muted-foreground hover:bg-muted"
               )}
             >
@@ -67,14 +70,20 @@ export function Sidebar() {
           </Avatar>
           <div className="flex flex-col overflow-hidden">
             <span className="text-sm font-medium truncate">Admin User</span>
-            <span className="text-xs text-muted-foreground truncate">admin@empresa.com</span>
+            <span className="text-xs text-muted-foreground truncate">
+              admin@empresa.com
+            </span>
           </div>
         </div>
-        <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50" size="sm">
+        <Button
+          variant="outline"
+          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+          size="sm"
+        >
           <LogOut className="mr-2 h-4 w-4" />
           Sair
         </Button>
       </div>
     </div>
-  )
+  );
 }

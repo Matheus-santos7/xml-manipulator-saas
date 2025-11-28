@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db } from "@/app/lib/db";
 import XmlProcessorClient from "@/components/xml-manipulator/processor-client";
 
 export default async function ManipuladorPage() {

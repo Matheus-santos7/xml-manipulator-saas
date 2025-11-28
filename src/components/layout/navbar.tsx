@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { FileCode, Settings, User, LogOut, FileCog } from "lucide-react"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { FileCode, Settings, User, LogOut, FileCog } from "lucide-react";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,11 +13,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Navbar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   const routes = [
     {
@@ -32,7 +32,7 @@ export function Navbar() {
       icon: Settings,
       active: pathname.includes("/configuracoes"),
     },
-  ]
+  ];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -53,7 +53,9 @@ export function Navbar() {
               href={route.href}
               className={cn(
                 "transition-colors hover:text-foreground/80 flex items-center gap-2",
-                route.active ? "text-foreground font-semibold" : "text-foreground/60"
+                route.active
+                  ? "text-foreground font-semibold"
+                  : "text-foreground/60"
               )}
             >
               <route.icon className="h-4 w-4" />
@@ -69,7 +71,9 @@ export function Navbar() {
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9">
                   <AvatarImage src="/avatars/01.png" alt="Usuario" />
-                  <AvatarFallback className="bg-primary/10 text-primary">AD</AvatarFallback>
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    AD
+                  </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -96,5 +100,5 @@ export function Navbar() {
         </div>
       </div>
     </header>
-  )
+  );
 }
