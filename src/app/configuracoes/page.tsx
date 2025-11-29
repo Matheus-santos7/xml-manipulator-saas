@@ -93,7 +93,7 @@ export default async function SettingsPage(props: {
                 <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
                   <FileCog className="h-10 w-10 opacity-20" />
                   <p>Nenhum cenário criado para esta empresa.</p>
-                  <p className="text-xs">Clique em "Novo Cenário" acima.</p>
+                  <p className="text-xs">Clique em &quot;Novo Cenário&quot; acima.</p>
                 </div>
               ) : (
                 <div className="grid gap-4">
@@ -142,6 +142,60 @@ export default async function SettingsPage(props: {
                               UF
                             </Badge>
                           )}
+                          {scenario.alterar_serie && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Série
+                            </Badge>
+                          )}
+                          {scenario.aplicar_reducao_aliq && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px]"
+                            >
+                              Redução Alíquota
+                            </Badge>
+                          )}
+                          {scenario.editar_destinatario_pj && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Dest. PJ
+                            </Badge>
+                          )}
+                          {scenario.editar_destinatario_pf && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Dest. PF
+                            </Badge>
+                          )}
+                          {scenario.editar_produtos && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Produtos
+                            </Badge>
+                          )}
+                          {scenario.editar_impostos && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Impostos
+                            </Badge>
+                          )}
+                          {scenario.editar_refNFe && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Ref. NFe
+                            </Badge>
+                          )}
+                          {scenario.editar_cst && (
+                            <Badge variant="outline" className="text-[10px]">
+                              CST
+                            </Badge>
+                          )}
+                          {scenario.zerar_ipi_remessa_retorno && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Zerar IPI Remessa/Retorno
+                            </Badge>
+                          )}
+                          {scenario.zerar_ipi_venda && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Zerar IPI Venda
+                            </Badge>
+                          )}
+                          {/* Adicione mais badges conforme necessário */}
                         </div>
                       </div>
 
