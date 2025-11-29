@@ -1611,7 +1611,8 @@ export function ScenarioEditor({
                                 });
                               }}
                             >
-                              <Plus className="h-4 w-4 mr-1" /> Adicionar Produto
+                              <Plus className="h-4 w-4 mr-1" /> Adicionar
+                              Produto
                             </Button>
                           )}
                         </div>
@@ -1828,7 +1829,8 @@ export function ScenarioEditor({
                                 });
                               }}
                             >
-                              <Plus className="h-4 w-4 mr-1" /> Adicionar Produto
+                              <Plus className="h-4 w-4 mr-1" /> Adicionar
+                              Produto
                             </Button>
                           </div>
                         )}
