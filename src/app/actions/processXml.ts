@@ -392,6 +392,21 @@ export async function processarArquivosXml(formData: FormData) {
         }
       : null;
 
+  // Prepara os dados dos produtos para edição (apenas se flag ativa)
+  const produtos =
+    scenario.editar_produtos &&
+    scenario.ScenarioProduto &&
+    scenario.ScenarioProduto.length > 0
+      ? scenario.ScenarioProduto.map((p) => ({
+          xProd: p.xProd || undefined,
+          cEAN: p.cEAN || undefined,
+          cProd: p.cProd || undefined,
+          NCM: p.NCM || undefined,
+          isPrincipal: p.isPrincipal,
+          ordem: p.ordem,
+        })).sort((a, b) => a.ordem - b.ordem) // Ordena por ordem crescente
+      : null;
+
   const resultadosEdicao = editarChavesEmLote(
     filesForProcessing,
     chaveMapping,
@@ -401,7 +416,8 @@ export async function processarArquivosXml(formData: FormData) {
     scenario.novo_cUF || null,
     scenario.nova_serie || null,
     novoEmitente,
-    novoDestinatario
+    novoDestinatario,
+    produtos
   );
 
   // Exibe resumo da edição

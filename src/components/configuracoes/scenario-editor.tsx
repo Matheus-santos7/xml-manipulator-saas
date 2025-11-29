@@ -88,9 +88,8 @@ const produtoSchema = z.object({
   cEAN: z.string().optional(),
   cProd: z.string().optional(),
   NCM: z.string().optional(),
-  CEST: z.string().optional(),
-  EXTIPI: z.string().optional(),
-  CFOP: z.string().optional(),
+  isPrincipal: z.boolean().default(false),
+  ordem: z.number().default(0),
 });
 
 const impostosSchema = z.object({
@@ -133,7 +132,7 @@ const formSchema = z.object({
   // Dados normalizados
   emitenteData: emitenteSchema.optional(),
   destinatarioData: destinatarioSchema.optional(),
-  produtoData: produtoSchema.optional(),
+  produtoData: z.array(produtoSchema).default([]),
   impostosData: impostosSchema.optional(),
 
   // Mapeamentos CST
@@ -222,23 +221,39 @@ export function ScenarioEditor({
       };
     };
 
-    // Extrair dados do produto
-    const getProdutoData = (): Record<string, string> => {
+    // Extrair dados dos produtos (array)
+    const getProdutoData = () => {
       const data =
-        scenarioToEdit?.ScenarioProduto ||
-        scenarioToEdit?.produtoData ||
-        scenarioToEdit?.produto_padrao;
-      if (!data) return {};
+        scenarioToEdit?.ScenarioProduto || scenarioToEdit?.produtoData;
+
+      if (!data) return [];
+
+      // Se for array, converte cada item
+      if (Array.isArray(data)) {
+        return data
+          .map((d) => ({
+            xProd: str(d.xProd),
+            cProd: str(d.cProd),
+            cEAN: str(d.cEAN),
+            NCM: str(d.NCM),
+            isPrincipal: Boolean(d.isPrincipal ?? false),
+            ordem: Number(d.ordem ?? 0),
+          }))
+          .sort((a, b) => a.ordem - b.ordem);
+      }
+
+      // Compatibilidade: se for objeto único, converte para array
       const d = data as Record<string, unknown>;
-      return {
-        xProd: str(d.xProd),
-        cProd: str(d.cProd),
-        cEAN: str(d.cEAN),
-        NCM: str(d.NCM),
-        CEST: str(d.CEST),
-        EXTIPI: str(d.EXTIPI),
-        CFOP: str(d.CFOP),
-      };
+      return [
+        {
+          xProd: str(d.xProd),
+          cProd: str(d.cProd),
+          cEAN: str(d.cEAN),
+          NCM: str(d.NCM),
+          isPrincipal: true,
+          ordem: 1,
+        },
+      ];
     };
 
     // Extrair dados dos impostos
@@ -315,6 +330,16 @@ export function ScenarioEditor({
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "cstMappings",
+  });
+
+  const {
+    fields: produtoFields,
+    append: appendProduto,
+    remove: removeProduto,
+    move: moveProduto,
+  } = useFieldArray({
+    control: form.control,
+    name: "produtoData",
   });
 
   // Resetar formulário quando o modal é aberto com novos dados
@@ -1555,71 +1580,258 @@ export function ScenarioEditor({
                     )}
 
                     {watchEditarProdutos && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="produtoData.xProd"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Descrição do Produto</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                            </FormItem>
+                      <div className="space-y-3 border rounded-lg p-4">
+                        {/* Cabeçalho - só mostra botão se não houver produtos */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <FormLabel className="text-base">
+                              Produtos
+                            </FormLabel>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Configure os produtos que serão usados. Para
+                              Remessa, os produtos serão rotacionados por ordem.
+                              Para Venda/Retorno/Devolução, use o produto
+                              marcado como principal.
+                            </p>
+                          </div>
+                          {produtoFields.length === 0 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const nextOrdem = produtoFields.length + 1;
+                                appendProduto({
+                                  xProd: "",
+                                  cEAN: "",
+                                  cProd: "",
+                                  NCM: "",
+                                  isPrincipal: produtoFields.length === 0,
+                                  ordem: nextOrdem,
+                                });
+                              }}
+                            >
+                              <Plus className="h-4 w-4 mr-1" /> Adicionar Produto
+                            </Button>
                           )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="produtoData.cProd"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Código do Produto</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="produtoData.cEAN"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Código EAN/GTIN</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="produtoData.NCM"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>NCM</FormLabel>
-                              <FormControl>
-                                <MaskedInput
-                                  mask="ncm"
-                                  placeholder="0000.00.00"
-                                  {...field}
+                        </div>
+
+                        {produtoFields.length === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            Nenhum produto configurado
+                          </p>
+                        )}
+
+                        {produtoFields.map((field, index) => (
+                          <div
+                            key={field.id}
+                            className="border rounded-lg p-4 space-y-3 bg-muted/50"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  Produto {index + 1}
+                                </span>
+                                <FormField
+                                  control={form.control}
+                                  name={`produtoData.${index}.isPrincipal`}
+                                  render={({ field }) => (
+                                    <FormItem className="flex items-center gap-2 space-y-0">
+                                      <FormControl>
+                                        <Switch
+                                          checked={field.value}
+                                          onCheckedChange={(checked) => {
+                                            // Ao marcar como principal, desmarca todos os outros
+                                            if (checked) {
+                                              produtoFields.forEach((_, i) => {
+                                                if (i !== index) {
+                                                  form.setValue(
+                                                    `produtoData.${i}.isPrincipal`,
+                                                    false
+                                                  );
+                                                }
+                                              });
+                                            }
+                                            field.onChange(checked);
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="text-xs font-normal cursor-pointer">
+                                        Principal (Venda/Retorno/Devolução)
+                                      </FormLabel>
+                                    </FormItem>
+                                  )}
                                 />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="produtoData.CEST"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>CEST</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {/* Botões de reordenação */}
+                                {index > 0 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      moveProduto(index, index - 1);
+                                      // Atualiza ordem após mover
+                                      setTimeout(() => {
+                                        produtoFields.forEach((_, i) => {
+                                          form.setValue(
+                                            `produtoData.${i}.ordem`,
+                                            i + 1
+                                          );
+                                        });
+                                      }, 0);
+                                    }}
+                                    title="Mover para cima"
+                                  >
+                                    ↑
+                                  </Button>
+                                )}
+                                {index < produtoFields.length - 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      moveProduto(index, index + 1);
+                                      // Atualiza ordem após mover
+                                      setTimeout(() => {
+                                        produtoFields.forEach((_, i) => {
+                                          form.setValue(
+                                            `produtoData.${i}.ordem`,
+                                            i + 1
+                                          );
+                                        });
+                                      }, 0);
+                                    }}
+                                    title="Mover para baixo"
+                                  >
+                                    ↓
+                                  </Button>
+                                )}
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    removeProduto(index);
+                                    // Atualiza ordem após remover
+                                    setTimeout(() => {
+                                      const remainingFields =
+                                        form.getValues("produtoData");
+                                      remainingFields.forEach((_, i) => {
+                                        form.setValue(
+                                          `produtoData.${i}.ordem`,
+                                          i + 1
+                                        );
+                                      });
+                                    }, 0);
+                                  }}
+                                  className="text-destructive"
+                                  title="Remover produto"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <FormField
+                                control={form.control}
+                                name={`produtoData.${index}.xProd`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">
+                                      Descrição do Produto
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input {...field} />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`produtoData.${index}.cProd`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">
+                                      Código do Produto
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input {...field} />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`produtoData.${index}.cEAN`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">
+                                      Código EAN/GTIN
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input {...field} />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`produtoData.${index}.NCM`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">
+                                      NCM
+                                    </FormLabel>
+                                    <FormControl>
+                                      <MaskedInput
+                                        mask="ncm"
+                                        placeholder="0000.00.00"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            {/* Campo oculto para ordem */}
+                            <FormField
+                              control={form.control}
+                              name={`produtoData.${index}.ordem`}
+                              render={({ field }) => (
+                                <input type="hidden" {...field} />
+                              )}
+                            />
+                          </div>
+                        ))}
+
+                        {/* Botão adicionar produto - aparece abaixo quando há produtos */}
+                        {produtoFields.length > 0 && (
+                          <div className="flex justify-end pt-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const nextOrdem = produtoFields.length + 1;
+                                appendProduto({
+                                  xProd: "",
+                                  cEAN: "",
+                                  cProd: "",
+                                  NCM: "",
+                                  isPrincipal: false,
+                                  ordem: nextOrdem,
+                                });
+                              }}
+                            >
+                              <Plus className="h-4 w-4 mr-1" /> Adicionar Produto
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </TabsContent>

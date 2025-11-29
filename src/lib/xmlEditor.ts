@@ -9,7 +9,12 @@
 
 import { XMLParser } from "fast-xml-parser";
 import type { ChaveMapping, ReferenceMapping } from "./chaveHelper";
-import { VENDAS_CFOP, DEVOLUCOES_CFOP } from "./constantes";
+import {
+  VENDAS_CFOP,
+  DEVOLUCOES_CFOP,
+  RETORNOS_CFOP,
+  REMESSAS_CFOP,
+} from "./constantes";
 
 /**
  * Dados do Emitente/Remetente para alteração
@@ -61,6 +66,16 @@ export interface DadosDestinatario {
   cPais?: string;
   xPais?: string;
   fone?: string;
+}
+
+/**
+ * Dados do Produto para alteração
+ */
+export interface DadosProduto {
+  xProd?: string; // Descrição do produto
+  cEAN?: string; // Código de barras (GTIN)
+  cProd?: string; // Código do produto
+  NCM?: string; // Nomenclatura Comum do Mercosul
 }
 
 /**
@@ -123,7 +138,10 @@ function editarChavesNFe(
   novoUF: string | null = null,
   novaSerie: string | null = null,
   novoEmitente: DadosEmitente | null = null,
-  novoDestinatario: DadosDestinatario | null = null
+  novoDestinatario: DadosDestinatario | null = null,
+  produtos: Array<
+    DadosProduto & { isPrincipal: boolean; ordem: number }
+  > | null = null
 ): ResultadoEdicao {
   const alteracoes: string[] = [];
   let xmlEditado = xmlContent;
@@ -369,7 +387,87 @@ function editarChavesNFe(
       }
     }
 
-    // 8. Atualiza as datas (REGEX)
+    // 8. Atualiza Produtos nos itens <det> (REGEX)
+    // Para VENDA/RETORNO/DEVOLUÇÃO: usa produto principal
+    // Para REMESSA: rotaciona entre produtos por ordem
+    if (produtos && produtos.length > 0) {
+      // Extrai o CFOP do primeiro item para determinar o tipo de operação
+      const det = findElement(infNFe, "det");
+      const prod = det ? findElement(det, "prod") : null;
+      const cfopValue = prod ? findElement(prod, "CFOP") : null;
+      const cfop =
+        typeof cfopValue === "string" ? cfopValue : String(cfopValue || "");
+
+      const isVendaRetornoOuDevolucao =
+        VENDAS_CFOP.includes(cfop) ||
+        DEVOLUCOES_CFOP.includes(cfop) ||
+        RETORNOS_CFOP.includes(cfop);
+
+      const isRemessa = REMESSAS_CFOP.includes(cfop);
+
+      // Regex para encontrar todos os blocos <det>
+      const regexDet = /<det[^>]*>[\s\S]*?<\/det>/gi;
+      const detBlocks = xmlEditado.match(regexDet);
+
+      if (detBlocks && (isVendaRetornoOuDevolucao || isRemessa)) {
+        detBlocks.forEach((detBlock, index) => {
+          let detBlockEditado = detBlock;
+          let produtoSelecionado: DadosProduto | null = null;
+
+          if (isVendaRetornoOuDevolucao) {
+            // Para VENDA/RETORNO/DEVOLUÇÃO: usa o produto principal
+            produtoSelecionado = produtos.find((p) => p.isPrincipal) || null;
+          } else if (isRemessa) {
+            // Para REMESSA: rotaciona pelos produtos usando ordem
+            // index % produtos.length garante que sempre haverá um produto válido
+            produtoSelecionado = produtos[index % produtos.length];
+          }
+
+          if (produtoSelecionado) {
+            // Campos do produto que podem ser alterados
+            const camposProd = [
+              { campo: "xProd", valor: produtoSelecionado.xProd },
+              { campo: "cEAN", valor: produtoSelecionado.cEAN },
+              { campo: "cProd", valor: produtoSelecionado.cProd },
+              { campo: "NCM", valor: produtoSelecionado.NCM },
+            ];
+
+            // Atualiza cada campo do produto dentro deste <det>
+            for (const { campo, valor } of camposProd) {
+              if (valor && valor.trim() !== "") {
+                // Regex para encontrar o campo dentro de <prod>
+                const regex = new RegExp(
+                  `(<prod[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+                  "i"
+                );
+
+                if (regex.test(detBlockEditado)) {
+                  detBlockEditado = detBlockEditado.replace(
+                    regex,
+                    `$1$2${valor}$3`
+                  );
+
+                  // Adiciona log apenas na primeira ocorrência
+                  if (index === 0) {
+                    const tipoOp = isRemessa
+                      ? "Remessa (rotação)"
+                      : "Venda/Retorno/Devolução (principal)";
+                    alteracoes.push(
+                      `Produto ${tipoOp}: <${campo}> alterado para ${valor}`
+                    );
+                  }
+                }
+              }
+            }
+
+            // Substitui o bloco <det> original pelo editado
+            xmlEditado = xmlEditado.replace(detBlock, detBlockEditado);
+          }
+        });
+      }
+    }
+
+    // 9. Atualiza as datas (REGEX)
     if (novaData) {
       const novaDataFormatada = formatarDataParaXml(novaData);
 
@@ -866,7 +964,10 @@ export function editarChavesXml(
   novoUF: string | null = null,
   novaSerie: string | null = null,
   novoEmitente: DadosEmitente | null = null,
-  novoDestinatario: DadosDestinatario | null = null
+  novoDestinatario: DadosDestinatario | null = null,
+  produtos: Array<
+    DadosProduto & { isPrincipal: boolean; ordem: number }
+  > | null = null
 ): ResultadoEdicao {
   // Detecção rápida do tipo de documento
   if (xmlContent.includes("<procEventoNFe")) {
@@ -897,7 +998,8 @@ export function editarChavesXml(
       novoUF,
       novaSerie,
       novoEmitente,
-      novoDestinatario
+      novoDestinatario,
+      produtos
     );
   } else if (
     xmlContent.includes("<procInutNFe") ||
@@ -934,7 +1036,10 @@ export function editarChavesEmLote(
   novoUF: string | null = null,
   novaSerie: string | null = null,
   novoEmitente: DadosEmitente | null = null,
-  novoDestinatario: DadosDestinatario | null = null
+  novoDestinatario: DadosDestinatario | null = null,
+  produtos: Array<
+    DadosProduto & { isPrincipal: boolean; ordem: number }
+  > | null = null
 ): ResultadoEdicao[] {
   const resultados: ResultadoEdicao[] = [];
 
@@ -949,7 +1054,8 @@ export function editarChavesEmLote(
       novoUF,
       novaSerie,
       novoEmitente,
-      novoDestinatario
+      novoDestinatario,
+      produtos
     );
     resultados.push(resultado);
   }

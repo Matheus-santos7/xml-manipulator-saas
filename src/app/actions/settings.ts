@@ -70,9 +70,8 @@ const produtoSchema = z.object({
   cEAN: z.string().optional().nullable(),
   cProd: z.string().optional().nullable(),
   NCM: z.string().optional().nullable(),
-  CEST: z.string().optional().nullable(),
-  EXTIPI: z.string().optional().nullable(),
-  CFOP: z.string().optional().nullable(),
+  isPrincipal: z.boolean().default(false),
+  ordem: z.number().default(0),
 });
 
 const impostoSchema = z.object({
@@ -241,14 +240,38 @@ export async function saveScenario(data: SaveScenarioInput) {
     }
   }
 
-  // Persistir produto padrão
-  if (produtoObj) {
+  // Persistir produtos (array)
+  if (produtoObj && Array.isArray(produtoObj)) {
+    // Remove produtos existentes
+    await db.scenarioProduto.deleteMany({ where: { scenarioId } });
+
+    // Cria novos produtos
+    const validProdutos = produtoObj
+      .map((p) => produtoSchema.safeParse(p))
+      .filter((result) => result.success)
+      .map((result) => (result.success ? result.data : null))
+      .filter((data): data is NonNullable<typeof data> => data !== null);
+
+    if (validProdutos.length > 0) {
+      await db.scenarioProduto.createMany({
+        data: validProdutos.map((p) => ({
+          scenarioId,
+          ...p,
+        })),
+      });
+    }
+  } else if (produtoObj && !Array.isArray(produtoObj)) {
+    // Compatibilidade com formato antigo (objeto único)
     const parsedProduto = produtoSchema.safeParse(produtoObj);
     if (parsedProduto.success) {
-      await db.scenarioProduto.upsert({
-        where: { scenarioId },
-        create: { scenarioId, ...parsedProduto.data },
-        update: parsedProduto.data,
+      await db.scenarioProduto.deleteMany({ where: { scenarioId } });
+      await db.scenarioProduto.create({
+        data: {
+          scenarioId,
+          ...parsedProduto.data,
+          isPrincipal: true,
+          ordem: 1,
+        },
       });
     }
   }

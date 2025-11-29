@@ -74,7 +74,7 @@ model Scenario {
   ScenarioDestinatario      ScenarioDestinatario?
   ScenarioEmitente          ScenarioEmitente?
   ScenarioImposto           ScenarioImposto?
-  ScenarioProduto           ScenarioProduto?
+  ScenarioProduto           ScenarioProduto[]
   TaxReformRule             TaxReformRule[]
 
   @@unique([profileId, name])
@@ -128,16 +128,18 @@ model ScenarioImposto {
 }
 
 model ScenarioProduto {
-  id         String   @id @default(cuid())
-  scenarioId String   @unique
-  xProd      String?
-  cEAN       String?
-  cProd      String?
-  NCM        String?
-  CEST       String?
-  EXTIPI     String?
-  CFOP       String?
-  Scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  scenarioId   String
+  xProd        String?
+  cEAN         String?
+  cProd        String?
+  NCM          String?
+  isPrincipal  Boolean  @default(false) // Produto usado em Venda/Retorno/Devolução
+  ordem        Int      @default(0) // Ordem de rotação para Remessa
+  Scenario     Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([scenarioId, ordem])
+  @@index([scenarioId])
 }
 
 model Session {

@@ -88,14 +88,33 @@ async function main() {
         },
       },
       ScenarioProduto: {
-        create: {
-          xProd: "TABLET M7 (WIFI/32GB) - BRANCO",
-          cEAN: "7899838882963",
-          cProd: "NB356",
-          NCM: "84713011",
-          CEST: "2102800",
-          EXTIPI: "01",
-          CFOP: "5105",
+        createMany: {
+          data: [
+            {
+              xProd: "TABLET M7 (WIFI/32GB) - BRANCO",
+              cEAN: "7899838882963",
+              cProd: "NB356",
+              NCM: "84713011",
+              isPrincipal: true,
+              ordem: 1,
+            },
+            {
+              xProd: "SMARTPHONE GALAXY A54 128GB",
+              cEAN: "7899999999991",
+              cProd: "SM001",
+              NCM: "85171231",
+              isPrincipal: false,
+              ordem: 2,
+            },
+            {
+              xProd: "NOTEBOOK DELL INSPIRON 15",
+              cEAN: "7899999999992",
+              cProd: "NB002",
+              NCM: "84713012",
+              isPrincipal: false,
+              ordem: 3,
+            },
+          ],
         },
       },
       ScenarioImposto: {
@@ -223,10 +242,16 @@ async function main() {
         },
       },
       ScenarioProduto: {
-        create: {
-          xProd: "Air Fryer 3,5 litros 220 V Essencial - Itatiaia",
-          cEAN: "7892946455166",
-          cProd: "AFITA1001",
+        createMany: {
+          data: [
+            {
+              xProd: "Air Fryer 3,5 litros 220 V Essencial - Itatiaia",
+              cEAN: "7892946455166",
+              cProd: "AFITA1001",
+              isPrincipal: true,
+              ordem: 1,
+            },
+          ],
         },
       },
       ScenarioImposto: {
@@ -349,10 +374,16 @@ async function main() {
         },
       },
       ScenarioProduto: {
-        create: {
-          xProd: "TINTA ACRILICA FOSCA STANDARD BRANCO 18L",
-          cEAN: "7891299101018",
-          cProd: "589336",
+        createMany: {
+          data: [
+            {
+              xProd: "TINTA ACRILICA FOSCA STANDARD BRANCO 18L",
+              cEAN: "7891299101018",
+              cProd: "589336",
+              isPrincipal: true,
+              ordem: 1,
+            },
+          ],
         },
       },
       ScenarioImposto: {

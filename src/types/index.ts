@@ -37,7 +37,7 @@ export interface ScenarioDB {
   // Novas relações normalizadas (nomes camelCase - uso interno)
   emitenteData?: ScenarioEmitenteDB | null;
   destinatarioData?: ScenarioDestinatarioDB | null;
-  produtoData?: ScenarioProdutoDB | null;
+  produtoData?: ScenarioProdutoDB[] | null;
   impostosData?: ScenarioImpostoDB | null;
   cstMappings?: CstMappingDB[];
   taxReformRules?: TaxReformRuleDB[];
@@ -45,7 +45,7 @@ export interface ScenarioDB {
   // Relações Prisma (nomes PascalCase - retornados pelo Prisma)
   ScenarioEmitente?: ScenarioEmitenteDB | null;
   ScenarioDestinatario?: ScenarioDestinatarioDB | null;
-  ScenarioProduto?: ScenarioProdutoDB | null;
+  ScenarioProduto: ScenarioProdutoDB[];
   ScenarioImposto?: ScenarioImpostoDB | null;
   CstMapping?: CstMappingDB[];
   TaxReformRule?: TaxReformRuleDB[];
@@ -113,9 +113,8 @@ export interface ScenarioProdutoDB {
   cEAN?: string | null;
   cProd?: string | null;
   NCM?: string | null;
-  CEST?: string | null;
-  EXTIPI?: string | null;
-  CFOP?: string | null;
+  isPrincipal: boolean;
+  ordem: number;
 }
 
 export interface ScenarioImpostoDB {
