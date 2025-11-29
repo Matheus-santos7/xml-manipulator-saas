@@ -333,6 +333,65 @@ export async function processarArquivosXml(formData: FormData) {
   // Sub-etapa 3.1: Edita as chaves nos XMLs usando os mapeamentos da ETAPA 2
   console.log(`Sub-etapa 3.1: Alteração de Chaves, Datas e Atributos\n`);
 
+  // Prepara os dados do emitente para edição
+  const novoEmitente =
+    scenario.editar_emitente && scenario.ScenarioEmitente
+      ? {
+          CNPJ: (scenario.ScenarioEmitente.cnpj || "").replace(/\D/g, ""), // Remove máscara do CNPJ
+          xNome: scenario.ScenarioEmitente.xNome || "",
+          xFant: scenario.ScenarioEmitente.xNome || "", // Usa xNome como fallback para xFant
+          IE: scenario.ScenarioEmitente.IE || "",
+          IEST: undefined,
+          IM: undefined,
+          CNAE: undefined,
+          CRT: undefined,
+          xLgr: scenario.ScenarioEmitente.xLgr || "",
+          nro: scenario.ScenarioEmitente.nro || "",
+          xCpl: scenario.ScenarioEmitente.xCpl || "",
+          xBairro: scenario.ScenarioEmitente.xBairro || "",
+          cMun: undefined,
+          xMun: scenario.ScenarioEmitente.xMun || "",
+          UF: scenario.ScenarioEmitente.UF || "",
+          CEP: (scenario.ScenarioEmitente.CEP || "").replace(/\D/g, ""), // Remove máscara do CEP
+          cPais: undefined,
+          xPais: undefined,
+          fone: (scenario.ScenarioEmitente.fone || "").replace(/\D/g, ""), // Remove máscara do telefone
+        }
+      : null;
+
+  // Prepara os dados do destinatário para edição
+  const novoDestinatario =
+    (scenario.editar_destinatario_pj || scenario.editar_destinatario_pf) &&
+    scenario.ScenarioDestinatario
+      ? {
+          CNPJ:
+            scenario.editar_destinatario_pj &&
+            scenario.ScenarioDestinatario.cnpj
+              ? scenario.ScenarioDestinatario.cnpj.replace(/\D/g, "")
+              : undefined,
+          CPF:
+            scenario.editar_destinatario_pf && scenario.ScenarioDestinatario.cpf
+              ? scenario.ScenarioDestinatario.cpf.replace(/\D/g, "")
+              : undefined,
+          xNome: scenario.ScenarioDestinatario.xNome || "",
+          IE: scenario.ScenarioDestinatario.IE || "",
+          xLgr: scenario.ScenarioDestinatario.xLgr || "",
+          nro: scenario.ScenarioDestinatario.nro || "",
+          xBairro: scenario.ScenarioDestinatario.xBairro || "",
+          cMun: undefined,
+          xMun: scenario.ScenarioDestinatario.xMun || "",
+          UF: scenario.ScenarioDestinatario.UF || "",
+          CEP: scenario.ScenarioDestinatario.CEP
+            ? scenario.ScenarioDestinatario.CEP.replace(/\D/g, "")
+            : "",
+          cPais: undefined,
+          xPais: undefined,
+          fone: scenario.ScenarioDestinatario.fone
+            ? scenario.ScenarioDestinatario.fone.replace(/\D/g, "")
+            : "",
+        }
+      : null;
+
   const resultadosEdicao = editarChavesEmLote(
     filesForProcessing,
     chaveMapping,
@@ -340,7 +399,9 @@ export async function processarArquivosXml(formData: FormData) {
     chaveVendaNova,
     scenario.nova_data || null,
     scenario.novo_cUF || null,
-    scenario.nova_serie || null
+    scenario.nova_serie || null,
+    novoEmitente,
+    novoDestinatario
   );
 
   // Exibe resumo da edição

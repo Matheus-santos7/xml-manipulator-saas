@@ -9,6 +9,59 @@
 
 import { XMLParser } from "fast-xml-parser";
 import type { ChaveMapping, ReferenceMapping } from "./chaveHelper";
+import { VENDAS_CFOP, DEVOLUCOES_CFOP } from "./constantes";
+
+/**
+ * Dados do Emitente/Remetente para alteração
+ */
+export interface DadosEmitente {
+  // Campos diretos do emitente
+  CNPJ?: string;
+  xNome?: string;
+  xFant?: string;
+  IE?: string;
+  IEST?: string;
+  IM?: string;
+  CNAE?: string;
+  CRT?: string;
+
+  // Campos do endereço
+  xLgr?: string;
+  nro?: string;
+  xCpl?: string;
+  xBairro?: string;
+  cMun?: string;
+  xMun?: string;
+  UF?: string;
+  CEP?: string;
+  cPais?: string;
+  xPais?: string;
+  fone?: string;
+}
+
+/**
+ * Dados do Destinatário para alteração
+ * Suporta tanto PJ (CNPJ) quanto PF (CPF)
+ */
+export interface DadosDestinatario {
+  // Campos de identificação (PJ ou PF)
+  CNPJ?: string;
+  CPF?: string;
+  xNome?: string;
+  IE?: string;
+
+  // Campos do endereço
+  xLgr?: string;
+  nro?: string;
+  xBairro?: string;
+  cMun?: string;
+  xMun?: string;
+  UF?: string;
+  CEP?: string;
+  cPais?: string;
+  xPais?: string;
+  fone?: string;
+}
 
 /**
  * Resultado da edição de um arquivo XML
@@ -68,7 +121,9 @@ function editarChavesNFe(
   referenceMap: ReferenceMapping,
   novaData: string | null = null,
   novoUF: string | null = null,
-  novaSerie: string | null = null
+  novaSerie: string | null = null,
+  novoEmitente: DadosEmitente | null = null,
+  novoDestinatario: DadosDestinatario | null = null
 ): ResultadoEdicao {
   const alteracoes: string[] = [];
   let xmlEditado = xmlContent;
@@ -180,7 +235,141 @@ function editarChavesNFe(
       }
     }
 
-    // 6. Atualiza as datas (REGEX)
+    // 6. Atualiza Emitente no <emit> e <enderEmit> (REGEX)
+    if (novoEmitente) {
+      // Campos diretos do <emit> (fora de enderEmit)
+      const camposEmit = [
+        { campo: "CNPJ", valor: novoEmitente.CNPJ },
+        { campo: "xNome", valor: novoEmitente.xNome },
+        { campo: "xFant", valor: novoEmitente.xFant },
+        { campo: "IE", valor: novoEmitente.IE },
+        { campo: "IEST", valor: novoEmitente.IEST },
+        { campo: "IM", valor: novoEmitente.IM },
+        { campo: "CNAE", valor: novoEmitente.CNAE },
+        { campo: "CRT", valor: novoEmitente.CRT },
+      ];
+
+      // Campos do endereço <enderEmit>
+      const camposEnderEmit = [
+        { campo: "xLgr", valor: novoEmitente.xLgr },
+        { campo: "nro", valor: novoEmitente.nro },
+        { campo: "xCpl", valor: novoEmitente.xCpl },
+        { campo: "xBairro", valor: novoEmitente.xBairro },
+        { campo: "cMun", valor: novoEmitente.cMun },
+        { campo: "xMun", valor: novoEmitente.xMun },
+        { campo: "UF", valor: novoEmitente.UF },
+        { campo: "CEP", valor: novoEmitente.CEP },
+        { campo: "cPais", valor: novoEmitente.cPais },
+        { campo: "xPais", valor: novoEmitente.xPais },
+        { campo: "fone", valor: novoEmitente.fone },
+      ];
+
+      // Atualiza campos diretos do <emit>
+      for (const { campo, valor } of camposEmit) {
+        if (valor) {
+          // Regex para encontrar tag dentro de <emit> mas fora de <enderEmit>
+          const regex = new RegExp(
+            `(<emit>(?:(?!<enderEmit>)[\\s\\S])*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+            "i"
+          );
+          if (regex.test(xmlEditado)) {
+            xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
+            alteracoes.push(`Emitente: <${campo}> alterado para ${valor}`);
+          }
+        }
+      }
+
+      // Atualiza campos do <enderEmit>
+      for (const { campo, valor } of camposEnderEmit) {
+        if (valor) {
+          // Regex para encontrar tag dentro de <enderEmit>
+          const regex = new RegExp(
+            `(<enderEmit[^>]*>[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+            "i"
+          );
+          if (regex.test(xmlEditado)) {
+            xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
+            alteracoes.push(
+              `Emitente Endereço: <${campo}> alterado para ${valor}`
+            );
+          }
+        }
+      }
+    }
+
+    // 7. Atualiza Destinatário no <dest> e <enderDest> (REGEX)
+    // Apenas para notas de VENDA ou DEVOLUÇÃO (baseado no CFOP)
+    if (novoDestinatario) {
+      // Extrai o CFOP do primeiro item (det)
+      const det = findElement(infNFe, "det");
+      const prod = det ? findElement(det, "prod") : null;
+      const cfopValue = prod ? findElement(prod, "CFOP") : null;
+      const cfop =
+        typeof cfopValue === "string" ? cfopValue : String(cfopValue || "");
+
+      const deveAtualizarDestinatario =
+        VENDAS_CFOP.includes(cfop) || DEVOLUCOES_CFOP.includes(cfop);
+
+      if (deveAtualizarDestinatario) {
+        // Campos diretos do <dest> (fora de enderDest)
+        const camposDest = [
+          { campo: "CNPJ", valor: novoDestinatario.CNPJ },
+          { campo: "CPF", valor: novoDestinatario.CPF },
+          { campo: "xNome", valor: novoDestinatario.xNome },
+          { campo: "IE", valor: novoDestinatario.IE },
+        ];
+
+        // Campos do endereço <enderDest>
+        const camposEnderDest = [
+          { campo: "xLgr", valor: novoDestinatario.xLgr },
+          { campo: "nro", valor: novoDestinatario.nro },
+          { campo: "xBairro", valor: novoDestinatario.xBairro },
+          { campo: "cMun", valor: novoDestinatario.cMun },
+          { campo: "xMun", valor: novoDestinatario.xMun },
+          { campo: "UF", valor: novoDestinatario.UF },
+          { campo: "CEP", valor: novoDestinatario.CEP },
+          { campo: "cPais", valor: novoDestinatario.cPais },
+          { campo: "xPais", valor: novoDestinatario.xPais },
+          { campo: "fone", valor: novoDestinatario.fone },
+        ];
+
+        // Atualiza campos diretos do <dest>
+        for (const { campo, valor } of camposDest) {
+          if (valor && valor.trim() !== "") {
+            // Regex para encontrar tag dentro de <dest> mas fora de <enderDest>
+            const regex = new RegExp(
+              `(<dest>(?:(?!<enderDest>)[\\s\\S])*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+              "i"
+            );
+            if (regex.test(xmlEditado)) {
+              xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
+              alteracoes.push(
+                `Destinatário: <${campo}> alterado para ${valor}`
+              );
+            }
+          }
+        }
+
+        // Atualiza campos do <enderDest>
+        for (const { campo, valor } of camposEnderDest) {
+          if (valor && valor.trim() !== "") {
+            // Regex para encontrar tag dentro de <enderDest>
+            const regex = new RegExp(
+              `(<enderDest[^>]*>[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+              "i"
+            );
+            if (regex.test(xmlEditado)) {
+              xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
+              alteracoes.push(
+                `Destinatário Endereço: <${campo}> alterado para ${valor}`
+              );
+            }
+          }
+        }
+      }
+    }
+
+    // 8. Atualiza as datas (REGEX)
     if (novaData) {
       const novaDataFormatada = formatarDataParaXml(novaData);
 
@@ -254,7 +443,9 @@ function editarChavesCTe(
   chaveMapping: ChaveMapping,
   chaveVendaNova: string | null,
   novaData: string | null = null,
-  novoUF: string | null = null
+  novoUF: string | null = null,
+  novoEmitente: DadosEmitente | null = null,
+  novoDestinatario: DadosDestinatario | null = null
 ): ResultadoEdicao {
   const alteracoes: string[] = [];
   let xmlEditado = xmlContent;
@@ -372,7 +563,124 @@ function editarChavesCTe(
       }
     }
 
-    // 5. Atualiza as datas (REGEX)
+    // 5. Atualiza Remetente no <rem> e <enderReme> (REGEX)
+    if (novoEmitente) {
+      // Campos diretos do <rem> (fora de enderReme)
+      const camposRem = [
+        { campo: "CNPJ", valor: novoEmitente.CNPJ },
+        { campo: "xNome", valor: novoEmitente.xNome },
+        { campo: "xFant", valor: novoEmitente.xFant },
+        { campo: "IE", valor: novoEmitente.IE },
+      ];
+
+      // Campos do endereço <enderReme>
+      const camposEnderReme = [
+        { campo: "xLgr", valor: novoEmitente.xLgr },
+        { campo: "nro", valor: novoEmitente.nro },
+        { campo: "xCpl", valor: novoEmitente.xCpl },
+        { campo: "xBairro", valor: novoEmitente.xBairro },
+        { campo: "cMun", valor: novoEmitente.cMun },
+        { campo: "xMun", valor: novoEmitente.xMun },
+        { campo: "UF", valor: novoEmitente.UF },
+        { campo: "CEP", valor: novoEmitente.CEP },
+        { campo: "cPais", valor: novoEmitente.cPais },
+        { campo: "xPais", valor: novoEmitente.xPais },
+        { campo: "fone", valor: novoEmitente.fone },
+      ];
+
+      // Atualiza campos diretos do <rem>
+      for (const { campo, valor } of camposRem) {
+        if (valor) {
+          // Regex para encontrar tag dentro de <rem> mas fora de <enderReme>
+          const regex = new RegExp(
+            `(<rem>(?:(?!<enderReme>)[\\s\\S])*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+            "i"
+          );
+          if (regex.test(xmlEditado)) {
+            xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
+            alteracoes.push(`Remetente: <${campo}> alterado para ${valor}`);
+          }
+        }
+      }
+
+      // Atualiza campos do <enderReme>
+      for (const { campo, valor } of camposEnderReme) {
+        if (valor) {
+          // Regex para encontrar tag dentro de <enderReme>
+          const regex = new RegExp(
+            `(<enderReme[^>]*>[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+            "i"
+          );
+          if (regex.test(xmlEditado)) {
+            xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
+            alteracoes.push(
+              `Remetente Endereço: <${campo}> alterado para ${valor}`
+            );
+          }
+        }
+      }
+    }
+
+    // 6. Atualiza Destinatário no <dest> e <enderDest> (REGEX)
+    if (novoDestinatario) {
+      // Campos diretos do <dest>
+      const camposDest = [
+        { campo: "CNPJ", valor: novoDestinatario.CNPJ },
+        { campo: "CPF", valor: novoDestinatario.CPF },
+        { campo: "xNome", valor: novoDestinatario.xNome },
+        { campo: "IE", valor: novoDestinatario.IE },
+      ];
+
+      // Campos do endereço <enderDest>
+      const camposEnderDest = [
+        { campo: "xLgr", valor: novoDestinatario.xLgr },
+        { campo: "nro", valor: novoDestinatario.nro },
+        { campo: "xBairro", valor: novoDestinatario.xBairro },
+        { campo: "cMun", valor: novoDestinatario.cMun },
+        { campo: "xMun", valor: novoDestinatario.xMun },
+        { campo: "UF", valor: novoDestinatario.UF },
+        { campo: "CEP", valor: novoDestinatario.CEP },
+        { campo: "cPais", valor: novoDestinatario.cPais },
+        { campo: "xPais", valor: novoDestinatario.xPais },
+        { campo: "fone", valor: novoDestinatario.fone },
+      ];
+
+      // Atualiza campos diretos do <dest>
+      for (const { campo, valor } of camposDest) {
+        if (valor && valor.trim() !== "") {
+          // Regex para encontrar tag dentro de <dest> mas fora de <enderDest>
+          const regex = new RegExp(
+            `(<dest>(?:(?!<enderDest>)[\\s\\S])*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+            "i"
+          );
+          if (regex.test(xmlEditado)) {
+            xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
+            alteracoes.push(
+              `Destinatário (CTe): <${campo}> alterado para ${valor}`
+            );
+          }
+        }
+      }
+
+      // Atualiza campos do <enderDest>
+      for (const { campo, valor } of camposEnderDest) {
+        if (valor && valor.trim() !== "") {
+          // Regex para encontrar tag dentro de <enderDest>
+          const regex = new RegExp(
+            `(<enderDest[^>]*>[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+            "i"
+          );
+          if (regex.test(xmlEditado)) {
+            xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
+            alteracoes.push(
+              `Destinatário Endereço (CTe): <${campo}> alterado para ${valor}`
+            );
+          }
+        }
+      }
+    }
+
+    // 7. Atualiza as datas (REGEX)
     if (novaData) {
       const novaDataFormatada = formatarDataParaXml(novaData);
 
@@ -556,7 +864,9 @@ export function editarChavesXml(
   chaveVendaNova: string | null,
   novaData: string | null = null,
   novoUF: string | null = null,
-  novaSerie: string | null = null
+  novaSerie: string | null = null,
+  novoEmitente: DadosEmitente | null = null,
+  novoDestinatario: DadosDestinatario | null = null
 ): ResultadoEdicao {
   // Detecção rápida do tipo de documento
   if (xmlContent.includes("<procEventoNFe")) {
@@ -573,7 +883,9 @@ export function editarChavesXml(
       chaveMapping,
       chaveVendaNova,
       novaData,
-      novoUF
+      novoUF,
+      novoEmitente,
+      novoDestinatario
     );
   } else if (xmlContent.includes("<nfeProc") || xmlContent.includes("<NFe")) {
     return editarChavesNFe(
@@ -583,7 +895,9 @@ export function editarChavesXml(
       referenceMap,
       novaData,
       novoUF,
-      novaSerie
+      novaSerie,
+      novoEmitente,
+      novoDestinatario
     );
   } else if (
     xmlContent.includes("<procInutNFe") ||
@@ -618,7 +932,9 @@ export function editarChavesEmLote(
   chaveVendaNova: string | null,
   novaData: string | null = null,
   novoUF: string | null = null,
-  novaSerie: string | null = null
+  novaSerie: string | null = null,
+  novoEmitente: DadosEmitente | null = null,
+  novoDestinatario: DadosDestinatario | null = null
 ): ResultadoEdicao[] {
   const resultados: ResultadoEdicao[] = [];
 
@@ -631,7 +947,9 @@ export function editarChavesEmLote(
       chaveVendaNova,
       novaData,
       novoUF,
-      novaSerie
+      novaSerie,
+      novoEmitente,
+      novoDestinatario
     );
     resultados.push(resultado);
   }
