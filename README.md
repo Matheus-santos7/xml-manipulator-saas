@@ -101,14 +101,56 @@ Observações do diagrama:
 
 Comandos rápidos:
 
-```
+```bash
+# 1. Instalar dependências
 pnpm install
+
+# 2. Configurar banco de dados
+# Definir DATABASE_URL no .env
+npx prisma migrate dev
+
+# 3. Configurar RBAC (criar usuários de teste)
+npx tsx scripts/setup-rbac.ts
+
+# 4. Rodar servidor de desenvolvimento
 pnpm run dev
 ```
 
+**🔐 Sistema RBAC**
+
+O sistema possui controle de acesso baseado em roles:
+
+- **Admin** (`admin@example.com`): Acesso total - gerencia empresas e cenários
+- **Member** (`usuario@example.com`): Acesso restrito - apenas cenários da empresa associada
+
+Para testar diferentes usuários, edite `src/lib/auth-helper.ts` linha 15:
+
+```typescript
+const TEST_EMAIL = "admin@example.com"; // ou "usuario@example.com"
+```
+
+📖 Documentação completa: [docs/RBAC.md](./docs/RBAC.md)
+
+**👥 Gerenciamento de Usuários**
+
+Admins têm acesso a uma interface completa para gerenciar membros:
+
+- Visualizar todos os usuários do workspace
+- Alterar roles (Admin ↔ Membro)
+- Associar membros a empresas específicas
+- Remover usuários do workspace
+
+Para adicionar mais usuários de teste:
+
+```bash
+npx tsx scripts/add-test-users.ts
+```
+
+📖 Documentação: [docs/USER-MANAGEMENT.md](./docs/USER-MANAGEMENT.md)
+
 Banco e migrations (exemplo):
 
-```
+```bash
 # definir DATABASE_URL
 npx prisma migrate dev --name init
 ```

@@ -37,14 +37,15 @@ model CstMapping {
 }
 
 model Profile {
-  id          String     @id @default(cuid())
-  workspaceId String
-  name        String
-  cnpj        String     @unique
-  razaoSocial String?
-  endereco    Json?
-  Workspace   Workspace  @relation(fields: [workspaceId], references: [id])
-  Scenario    Scenario[]
+  id              String            @id @default(cuid())
+  workspaceId     String
+  name            String
+  cnpj            String            @unique
+  razaoSocial     String?
+  endereco        Json?
+  Workspace       Workspace         @relation(fields: [workspaceId], references: [id])
+  Scenario        Scenario[]
+  WorkspaceMember WorkspaceMember[]
 }
 
 model Scenario {
@@ -169,6 +170,8 @@ model User {
   id              String            @id @default(cuid())
   name            String?
   email           String?           @unique
+  password        String?           // Hash da senha
+  role            String            @default("user") // "user" ou "admin" (System Admin)
   emailVerified   DateTime?
   image           String?
   Account         Account[]
@@ -188,7 +191,9 @@ model WorkspaceMember {
   id          String    @id @default(cuid())
   workspaceId String
   userId      String
-  role        String    @default("member")
+  role        String    @default("member") // "admin" ou "member"
+  profileId   String? // Profile associado (apenas para members)
+  Profile     Profile?  @relation(fields: [profileId], references: [id])
   User        User      @relation(fields: [userId], references: [id])
   Workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
