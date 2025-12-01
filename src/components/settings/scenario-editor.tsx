@@ -290,9 +290,9 @@ export function ScenarioEditor({
     };
 
     // Nome do cenário: se duplicando, adiciona " (Cópia)"
-    const scenarioName = isDuplicating 
-      ? `${scenarioToEdit?.name ?? ""} (Cópia)` 
-      : (scenarioToEdit?.name ?? "");
+    const scenarioName = isDuplicating
+      ? `${scenarioToEdit?.name ?? ""} (Cópia)`
+      : scenarioToEdit?.name ?? "";
 
     return {
       // Se duplicando, não passa o id para criar um novo cenário
@@ -573,7 +573,13 @@ export function ScenarioEditor({
           <Button
             variant={isEditing || isDuplicating ? "outline" : "default"}
             size={isEditing || isDuplicating ? "sm" : "default"}
-            title={isDuplicating ? "Duplicar cenário" : isEditing ? "Editar cenário" : "Criar novo cenário"}
+            title={
+              isDuplicating
+                ? "Duplicar cenário"
+                : isEditing
+                ? "Editar cenário"
+                : "Criar novo cenário"
+            }
           >
             {isDuplicating ? (
               <Copy className="h-4 w-4" />
@@ -585,14 +591,14 @@ export function ScenarioEditor({
           </Button>
         </DialogTrigger>
 
-        <DialogContent className="max-w-[90vw] w-[1200px] max-h-[90vh] h-auto flex flex-col">
+        <DialogContent className="max-w-[90vw] w-[1200px] max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle>
-              {isDuplicating 
-                ? "Duplicar Cenário" 
-                : isEditing 
-                  ? "Editar Cenário" 
-                  : "Novo Cenário"}
+              {isDuplicating
+                ? "Duplicar Cenário"
+                : isEditing
+                ? "Editar Cenário"
+                : "Novo Cenário"}
             </DialogTitle>
             {isEditing && (
               <AlertDialog>
@@ -650,7 +656,7 @@ export function ScenarioEditor({
                   <TabsTrigger value="cst">Mapeamento CST</TabsTrigger>
                 </TabsList>
 
-                <ScrollArea className="flex-1 pr-4 mt-4">
+                <ScrollArea className="flex-1 h-[calc(90vh-200px)] pr-4 mt-4">
                   {/* ─────────────── ABA GERAL ─────────────── */}
                   <TabsContent value="geral" className="space-y-4 mt-0">
                     <div className="grid grid-cols-2 gap-4">
