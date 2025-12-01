@@ -287,3 +287,72 @@ export async function updateUserByAdmin(data: {
     };
   }
 }
+
+/**
+ * Cria um novo membro no workspace
+ * Apenas admins podem acessar
+ */
+export async function createMember(data: {
+  name: string;
+  email: string;
+  password: string;
+  role: "admin" | "member";
+  profileId?: string | null;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser || currentUser.role !== ROLES.ADMIN) {
+      return {
+        success: false,
+        error: "Acesso negado. Apenas administradores podem criar usuários.",
+      };
+    }
+
+    // Verificar se email já existe
+    const existingUser = await db.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        error: "Este email já está em uso.",
+      };
+    }
+
+    // Hash da senha
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    // Criar usuário e membro do workspace em uma transação
+    await db.$transaction(async (tx) => {
+      // Criar usuário
+      const newUser = await tx.user.create({
+        data: {
+          name: data.name,
+          email: data.email,
+          password: hashedPassword,
+        },
+      });
+
+      // Criar membro do workspace
+      await tx.workspaceMember.create({
+        data: {
+          userId: newUser.id,
+          workspaceId: currentUser.workspaceId,
+          role: data.role,
+          profileId: data.profileId || null,
+        },
+      });
+    });
+
+    revalidatePath("/settings/users");
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao criar membro:", error);
+    return {
+      success: false,
+      error: "Erro ao criar usuário.",
+    };
+  }
+}

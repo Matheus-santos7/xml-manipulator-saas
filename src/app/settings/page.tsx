@@ -99,7 +99,7 @@ export default async function SettingsPage(props: {
         <div>
           {role === "admin" && (
             <Button variant="outline" asChild>
-              <Link href="/configuracoes/users">
+              <Link href="/settings/users">
                 <Users className="h-4 w-4 mr-2" />
                 Gerenciar Usuários
               </Link>

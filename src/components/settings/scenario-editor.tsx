@@ -48,7 +48,16 @@ import {
 import { toast } from "sonner";
 import { saveScenario, deleteScenario } from "@/app/actions/settings";
 import type { ScenarioDB } from "@/types";
-import { Trash2, Plus, Pencil, Search, Loader2, Copy } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  Pencil,
+  Search,
+  Loader2,
+  Copy,
+  Shuffle,
+} from "lucide-react";
+import { DESTINATARIOS_DISPONIVEIS } from "@/lib/constantes";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Schema Zod para validação do formulário
@@ -1370,14 +1379,107 @@ export function ScenarioEditor({
                     {(watchEditarDestinatarioPJ ||
                       watchEditarDestinatarioPF) && (
                       <div className="space-y-4">
-                        {/* Indicador do tipo selecionado */}
-                        <div className="p-3 bg-muted rounded-lg">
+                        {/* Indicador do tipo selecionado + Botão Sortear */}
+                        <div className="p-3 bg-muted rounded-lg flex items-center justify-between">
                           <span className="text-sm font-medium">
                             Tipo:{" "}
                             {watchEditarDestinatarioPJ
                               ? "Pessoa Jurídica (CNPJ)"
                               : "Pessoa Física (CPF)"}
                           </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // Filtra destinatários pelo tipo selecionado
+                              const tipoFiltro = watchEditarDestinatarioPJ
+                                ? "PJ"
+                                : "PF";
+                              const destinatariosFiltrados =
+                                DESTINATARIOS_DISPONIVEIS.filter(
+                                  (d) => d.tipo === tipoFiltro
+                                );
+
+                              if (destinatariosFiltrados.length === 0) {
+                                toast.error(
+                                  `Nenhum destinatário ${
+                                    tipoFiltro === "PJ"
+                                      ? "Pessoa Jurídica"
+                                      : "Pessoa Física"
+                                  } disponível para sorteio.`
+                                );
+                                return;
+                              }
+
+                              // Sorteia um destinatário aleatório
+                              const sorteado =
+                                destinatariosFiltrados[
+                                  Math.floor(
+                                    Math.random() *
+                                      destinatariosFiltrados.length
+                                  )
+                                ];
+
+                              // Preenche os campos do formulário
+                              if (watchEditarDestinatarioPJ && sorteado.CNPJ) {
+                                form.setValue(
+                                  "destinatarioData.cnpj",
+                                  sorteado.CNPJ
+                                );
+                                form.setValue(
+                                  "destinatarioData.IE",
+                                  sorteado.IE || ""
+                                );
+                              }
+                              if (watchEditarDestinatarioPF && sorteado.CPF) {
+                                form.setValue(
+                                  "destinatarioData.cpf",
+                                  sorteado.CPF
+                                );
+                              }
+
+                              form.setValue(
+                                "destinatarioData.xNome",
+                                sorteado.xNome
+                              );
+                              form.setValue(
+                                "destinatarioData.xLgr",
+                                sorteado.xLgr
+                              );
+                              form.setValue(
+                                "destinatarioData.nro",
+                                sorteado.nro
+                              );
+                              form.setValue(
+                                "destinatarioData.xBairro",
+                                sorteado.xBairro
+                              );
+                              form.setValue(
+                                "destinatarioData.xMun",
+                                sorteado.xMun
+                              );
+                              form.setValue("destinatarioData.UF", sorteado.UF);
+                              form.setValue(
+                                "destinatarioData.CEP",
+                                sorteado.CEP
+                              );
+                              form.setValue(
+                                "destinatarioData.fone",
+                                sorteado.fone
+                              );
+
+                              toast.success(
+                                `Destinatário sorteado: ${
+                                  sorteado.nomeFantasia || sorteado.xNome
+                                }`
+                              );
+                            }}
+                            title="Sortear destinatário aleatório"
+                          >
+                            <Shuffle className="h-4 w-4 mr-2" />
+                            Sortear Destinatário
+                          </Button>
                         </div>
 
                         {/* Campos para PJ */}
