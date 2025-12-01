@@ -3,7 +3,8 @@
 import { db } from "@/app/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { Scenario, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { Scenario } from "@prisma/client";
 
 // --- Sub-schemas de Validação ---
 const emitenteSchema = z
@@ -136,6 +137,90 @@ export async function saveProfile(data: FormData) {
   revalidatePath("/dashboard/configuracoes");
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Atualizar Empresa (Profile)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface UpdateProfileInput {
+  id: string;
+  name: string;
+  cnpj: string;
+  razaoSocial?: string;
+  endereco?: {
+    logradouro?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    cidade?: string;
+    uf?: string;
+    cep?: string;
+  };
+}
+
+export async function updateProfile(data: UpdateProfileInput) {
+  if (!data.id) {
+    return { success: false, error: "ID da empresa não informado" };
+  }
+
+  try {
+    // Verifica se a empresa existe
+    const existingProfile = await db.profile.findUnique({
+      where: { id: data.id },
+    });
+
+    if (!existingProfile) {
+      return { success: false, error: "Empresa não encontrada" };
+    }
+
+    // Verifica se o CNPJ já existe em outra empresa
+    if (data.cnpj && data.cnpj !== existingProfile.cnpj) {
+      const cnpjExists = await db.profile.findUnique({
+        where: { cnpj: data.cnpj },
+      });
+
+      if (cnpjExists && cnpjExists.id !== data.id) {
+        return { success: false, error: "CNPJ já cadastrado em outra empresa" };
+      }
+    }
+
+    await db.profile.update({
+      where: { id: data.id },
+      data: {
+        name: data.name,
+        cnpj: data.cnpj,
+        razaoSocial: data.razaoSocial || null,
+        endereco: data.endereco ? data.endereco : Prisma.DbNull,
+      },
+    });
+
+    revalidatePath("/dashboard/configuracoes");
+    revalidatePath("/configuracoes");
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao atualizar empresa:", error);
+    return { success: false, error: "Erro ao atualizar empresa" };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Buscar Empresa por ID
+// ─────────────────────────────────────────────────────────────────────────────
+export async function getProfileById(profileId: string) {
+  if (!profileId) {
+    return null;
+  }
+
+  try {
+    const profile = await db.profile.findUnique({
+      where: { id: profileId },
+    });
+
+    return profile;
+  } catch (error) {
+    console.error("Erro ao buscar empresa:", error);
+    return null;
+  }
+}
+
 export type SaveScenarioInput = z.infer<typeof scenarioSchema> & {
   emitente?: string | Record<string, unknown>;
   emitenteData?: Record<string, unknown>;
@@ -146,7 +231,7 @@ export type SaveScenarioInput = z.infer<typeof scenarioSchema> & {
   destinatario?: string | Record<string, unknown>;
   destinatarioData?: Record<string, unknown>;
   cstMappings?: Array<{
-    cfop: string;
+    tipoOperacao: "VENDA" | "DEVOLUCAO" | "RETORNO" | "REMESSA";
     icms?: string;
     ipi?: string;
     pis?: string;
@@ -295,7 +380,7 @@ export async function saveScenario(data: SaveScenarioInput) {
     // createMany aceita um array de objetos
     const toCreate = data.cstMappings.map((m) => ({
       scenarioId,
-      cfop: m.cfop,
+      tipoOperacao: m.tipoOperacao,
       icms: m.icms || undefined,
       ipi: m.ipi || undefined,
       pis: m.pis || undefined,

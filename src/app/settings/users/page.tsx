@@ -1,13 +1,13 @@
 import { db } from "@/app/lib/db";
 import { getCurrentUser } from "@/lib/auth-helper";
 import { redirect } from "next/navigation";
-import { UserManagement } from "@/components/configuracoes/user-management";
+import { UserManagement } from "@/components/settings/user-management";
 import { getWorkspaceMembers } from "@/app/actions/users";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-export default async function UsuariosPage() {
+export default async function usersPage() {
   // Verificar autenticação e permissões
   const currentUser = await getCurrentUser();
 
@@ -17,7 +17,7 @@ export default async function UsuariosPage() {
 
   // Apenas admins podem acessar
   if (currentUser.role !== "admin") {
-    redirect("/configuracoes");
+    redirect("/settings");
   }
 
   // Buscar dados
@@ -39,7 +39,7 @@ export default async function UsuariosPage() {
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/configuracoes">
+          <Link href="/settings">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

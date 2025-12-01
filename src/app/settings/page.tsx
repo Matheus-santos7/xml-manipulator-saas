@@ -7,8 +7,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScenarioEditor } from "@/components/configuracoes/scenario-editor";
-import { ProfileForm } from "@/components/configuracoes/profile-company-form";
+import { ScenarioEditor } from "@/components/settings/scenario-editor";
+import { ProfileForm } from "@/components/settings/profile-company-form";
 import { Building2, FileCog, Shield, Users } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth-helper";
 import { redirect } from "next/navigation";
@@ -99,7 +99,7 @@ export default async function SettingsPage(props: {
         <div>
           {role === "admin" && (
             <Button variant="outline" asChild>
-              <Link href="/configuracoes/usuarios">
+              <Link href="/configuracoes/users">
                 <Users className="h-4 w-4 mr-2" />
                 Gerenciar Usuários
               </Link>

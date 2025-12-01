@@ -20,8 +20,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
     // Busca email do cookie de autenticação
     const userEmail = await getAuthenticatedUserEmail();
+    console.log("[auth-helper] userEmail from cookie:", userEmail);
 
     if (!userEmail) {
+      console.log("[auth-helper] No userEmail found, returning null");
       return null;
     }
 
@@ -29,7 +31,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       where: { email: userEmail },
     });
 
+    console.log("[auth-helper] user found:", user?.id, user?.email);
+
     if (!user) {
+      console.log("[auth-helper] No user found, returning null");
       return null;
     }
 
@@ -42,6 +47,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
         userId: user.id,
       },
     });
+
+    console.log("[auth-helper] workspaceMember:", workspaceMember?.id);
 
     // Se não tem workspace mas é admin do sistema, tenta encontrar qualquer workspace
     // ou cria um contexto de admin global (usando o primeiro workspace disponível)

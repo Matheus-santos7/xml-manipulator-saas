@@ -39,6 +39,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { saveScenario, deleteScenario } from "@/app/actions/settings";
 import type { ScenarioDB } from "@/types";
@@ -47,8 +54,12 @@ import { Trash2, Plus, Pencil, Search, Loader2 } from "lucide-react";
 // ─────────────────────────────────────────────────────────────────────────────
 // Schema Zod para validação do formulário
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Tipos de operação disponíveis para mapeamento de CST
+const TIPOS_OPERACAO = ["VENDA", "DEVOLUCAO", "RETORNO", "REMESSA"] as const;
+
 const cstMappingSchema = z.object({
-  cfop: z.string().min(1, "CFOP obrigatório"),
+  tipoOperacao: z.enum(TIPOS_OPERACAO),
   icms: z.string().optional(),
   ipi: z.string().optional(),
   pis: z.string().optional(),
@@ -313,7 +324,7 @@ export function ScenarioEditor({
       cstMappings:
         (scenarioToEdit?.CstMapping || scenarioToEdit?.cstMappings)?.map(
           (m) => ({
-            cfop: m.cfop,
+            tipoOperacao: m.tipoOperacao,
             icms: m.icms ?? "",
             ipi: m.ipi ?? "",
             pis: m.pis ?? "",
@@ -970,7 +981,7 @@ export function ScenarioEditor({
                       <div className="space-y-3 border rounded-lg p-4">
                         <div className="flex items-center justify-between">
                           <FormLabel className="text-base">
-                            Mapeamentos CST por CFOP
+                            Mapeamentos CST por Tipo de Operação
                           </FormLabel>
                           <Button
                             type="button"
@@ -978,7 +989,7 @@ export function ScenarioEditor({
                             size="sm"
                             onClick={() =>
                               append({
-                                cfop: "",
+                                tipoOperacao: "VENDA",
                                 icms: "",
                                 ipi: "",
                                 pis: "",
@@ -1003,19 +1014,29 @@ export function ScenarioEditor({
                           >
                             <FormField
                               control={form.control}
-                              name={`cstMappings.${index}.cfop`}
+                              name={`cstMappings.${index}.tipoOperacao`}
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel className="text-xs">
-                                    CFOP
+                                    Tipo Operação
                                   </FormLabel>
-                                  <FormControl>
-                                    <MaskedInput
-                                      mask="cfop"
-                                      placeholder="5102"
-                                      {...field}
-                                    />
-                                  </FormControl>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Selecione" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {TIPOS_OPERACAO.map((tipo) => (
+                                        <SelectItem key={tipo} value={tipo}>
+                                          {tipo}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                 </FormItem>
                               )}
                             />

@@ -26,14 +26,16 @@ model Account {
 }
 
 model CstMapping {
-  id         String   @id @default(cuid())
-  scenarioId String
-  cfop       String
-  icms       String?
-  ipi        String?
-  pis        String?
-  cofins     String?
-  Scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  scenarioId   String
+  tipoOperacao String   // VENDA, DEVOLUCAO, RETORNO, REMESSA
+  icms         String?
+  ipi          String?
+  pis          String?
+  cofins       String?
+  Scenario     Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+
+  @@unique([scenarioId, tipoOperacao])
 }
 
 model Profile {
@@ -46,6 +48,7 @@ model Profile {
   Workspace       Workspace         @relation(fields: [workspaceId], references: [id])
   Scenario        Scenario[]
   WorkspaceMember WorkspaceMember[]
+  DivergenceSummaries DivergenceSummary[]
 }
 
 model Scenario {
@@ -198,4 +201,23 @@ model WorkspaceMember {
   Workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
   @@unique([workspaceId, userId])
+}
+
+model DivergenceSummary {
+  id        String          @id @default(cuid())
+  createdAt DateTime        @default(now())
+  totalErp  Int
+  totalMl   Int
+  diferenca Int
+  notes     DivergentNote[]
+  profileId String? // Adiciona a referência ao Profile
+  Profile   Profile?  @relation(fields: [profileId], references: [id]) // Adiciona a relação
+}
+
+model DivergentNote {
+  id                 String            @id @default(cuid())
+  summaryId          String
+  nfKey              String            @unique
+  status_conciliacao String
+  summary            DivergenceSummary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
 }

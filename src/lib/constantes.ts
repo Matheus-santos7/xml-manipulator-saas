@@ -2,6 +2,16 @@
  * Constantes utilizadas no sistema de manipulação de XMLs
  */
 
+// Tipos de operação fiscal para mapeamento de CST
+export type TipoOperacao = "VENDA" | "DEVOLUCAO" | "RETORNO" | "REMESSA";
+
+export const TIPOS_OPERACAO: TipoOperacao[] = [
+  "VENDA",
+  "DEVOLUCAO",
+  "RETORNO",
+  "REMESSA",
+];
+
 // CFOPs utilizados para identificar tipos de operações fiscais
 export const CFOP_LISTS = {
   VENDAS: [

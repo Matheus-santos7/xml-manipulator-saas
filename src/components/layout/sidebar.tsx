@@ -22,7 +22,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import ProfileEditDialog from "@/components/profile/profile-edit-dialog";
+import ProfileEditDialog from "@/components/profile/user-edit-dialog";
 import { useState } from "react";
 
 interface SidebarProps {
@@ -43,19 +43,25 @@ export function Sidebar({ userEmail, userName, isAdmin }: SidebarProps) {
       visible: true,
     },
     {
-      href: "/configuracoes",
+      href: "/settings",
       label: "Configurações",
       icon: Settings,
-      active:
-        pathname.includes("/configuracoes") && !pathname.includes("/usuarios"),
+      active: pathname.includes("/settings") && !pathname.includes("/users"),
       visible: true,
     },
     {
-      href: "/configuracoes/usuarios",
+      href: "/settings/users",
       label: "Gerenciar Usuários",
       icon: Users,
-      active: pathname.includes("/usuarios"),
-      visible: isAdmin, // Apenas admins veem
+      active: pathname.includes("/users"),
+      visible: isAdmin,
+    },
+    {
+      href: "/divergences",
+      label: "Divergências",
+      icon: FileCog,
+      active: pathname.includes("/divergences"),
+      visible: isAdmin,
     },
   ];
 
@@ -65,7 +71,6 @@ export function Sidebar({ userEmail, userName, isAdmin }: SidebarProps) {
       toast.success("Logout realizado com sucesso!");
     } catch (error) {
       toast.success("Logout realizado com sucesso!");
-
     }
   };
 

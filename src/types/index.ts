@@ -54,7 +54,7 @@ export interface ScenarioDB {
 export interface CstMappingDB {
   id?: string;
   scenarioId?: string;
-  cfop: string;
+  tipoOperacao: "VENDA" | "DEVOLUCAO" | "RETORNO" | "REMESSA";
   icms?: string | null;
   ipi?: string | null;
   pis?: string | null;

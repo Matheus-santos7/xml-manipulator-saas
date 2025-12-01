@@ -407,6 +407,22 @@ export async function processarArquivosXml(formData: FormData) {
         })).sort((a, b) => a.ordem - b.ordem) // Ordena por ordem crescente
       : null;
 
+  // Prepara os mapeamentos de CST por Tipo de Operação (apenas se flag ativa)
+  const cstMappings =
+    scenario.editar_cst && scenario.CstMapping && scenario.CstMapping.length > 0
+      ? scenario.CstMapping.map((m) => ({
+          tipoOperacao: m.tipoOperacao as
+            | "VENDA"
+            | "DEVOLUCAO"
+            | "RETORNO"
+            | "REMESSA",
+          icms: m.icms,
+          ipi: m.ipi,
+          pis: m.pis,
+          cofins: m.cofins,
+        }))
+      : null;
+
   const resultadosEdicao = editarChavesEmLote(
     filesForProcessing,
     chaveMapping,
@@ -417,7 +433,8 @@ export async function processarArquivosXml(formData: FormData) {
     scenario.nova_serie || null,
     novoEmitente,
     novoDestinatario,
-    produtos
+    produtos,
+    cstMappings
   );
 
   // Exibe resumo da edição

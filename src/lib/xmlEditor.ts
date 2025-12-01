@@ -14,6 +14,7 @@ import {
   DEVOLUCOES_CFOP,
   RETORNOS_CFOP,
   REMESSAS_CFOP,
+  type TipoOperacao,
 } from "./constantes";
 
 /**
@@ -79,6 +80,19 @@ export interface DadosProduto {
 }
 
 /**
+ * Mapeamento de CST por Tipo de Operação
+ * Baseado no modelo Python: mapeamento_cst por grupo de notas
+ * Exemplo: { tipoOperacao: "VENDA", icms: "00", pis: "01", cofins: "01", ipi: "50" }
+ */
+export interface CstMappingData {
+  tipoOperacao: TipoOperacao;
+  icms?: string | null;
+  ipi?: string | null;
+  pis?: string | null;
+  cofins?: string | null;
+}
+
+/**
  * Resultado da edição de um arquivo XML
  */
 export interface ResultadoEdicao {
@@ -141,7 +155,8 @@ function editarChavesNFe(
   novoDestinatario: DadosDestinatario | null = null,
   produtos: Array<
     DadosProduto & { isPrincipal: boolean; ordem: number }
-  > | null = null
+  > | null = null,
+  cstMappings: CstMappingData[] | null = null
 ): ResultadoEdicao {
   const alteracoes: string[] = [];
   let xmlEditado = xmlContent;
@@ -467,7 +482,125 @@ function editarChavesNFe(
       }
     }
 
-    // 9. Atualiza as datas (REGEX)
+    // 9. Atualiza CST por Tipo de Operação em cada item <det> (REGEX)
+    // Identifica o tipo de operação pelo CFOP e aplica os CSTs configurados
+    if (cstMappings && cstMappings.length > 0) {
+      // Cria um mapa para acesso rápido: tipoOperacao -> { icms, ipi, pis, cofins }
+      const cstMapByTipoOp = new Map<
+        TipoOperacao,
+        {
+          icms?: string | null;
+          ipi?: string | null;
+          pis?: string | null;
+          cofins?: string | null;
+        }
+      >();
+      for (const mapping of cstMappings) {
+        cstMapByTipoOp.set(mapping.tipoOperacao, {
+          icms: mapping.icms,
+          ipi: mapping.ipi,
+          pis: mapping.pis,
+          cofins: mapping.cofins,
+        });
+      }
+
+      // Função auxiliar para determinar o tipo de operação pelo CFOP
+      const getTipoOperacaoByCfop = (cfop: string): TipoOperacao | null => {
+        if (VENDAS_CFOP.includes(cfop)) return "VENDA";
+        if (DEVOLUCOES_CFOP.includes(cfop)) return "DEVOLUCAO";
+        if (RETORNOS_CFOP.includes(cfop)) return "RETORNO";
+        if (REMESSAS_CFOP.includes(cfop)) return "REMESSA";
+        return null;
+      };
+
+      // Regex para encontrar todos os blocos <det>
+      const regexDetCst = /<det[^>]*>[\s\S]*?<\/det>/gi;
+      const detBlocksCst = xmlEditado.match(regexDetCst);
+
+      if (detBlocksCst) {
+        for (const detBlock of detBlocksCst) {
+          let detBlockEditado = detBlock;
+
+          // Extrai o CFOP deste item
+          const cfopMatch = detBlock.match(/<CFOP>([^<]+)<\/CFOP>/i);
+          const cfopItem = cfopMatch ? cfopMatch[1] : null;
+
+          // Determina o tipo de operação pelo CFOP
+          const tipoOp = cfopItem ? getTipoOperacaoByCfop(cfopItem) : null;
+
+          if (tipoOp && cstMapByTipoOp.has(tipoOp)) {
+            const cstRules = cstMapByTipoOp.get(tipoOp)!;
+
+            // Aplica CST do ICMS (pode estar em ICMSxx, como ICMS00, ICMS10, etc.)
+            if (cstRules.icms) {
+              // O CST do ICMS está dentro de <ICMS><ICMSxx><CST>valor</CST>...
+              // ou direto em <ICMS><ICMSSN...><CSOSN> para Simples Nacional
+              const regexCstIcms =
+                /(<ICMS[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i;
+              if (regexCstIcms.test(detBlockEditado)) {
+                detBlockEditado = detBlockEditado.replace(
+                  regexCstIcms,
+                  `$1$2${cstRules.icms}$3`
+                );
+                alteracoes.push(
+                  `CST ICMS alterado para ${cstRules.icms} (${tipoOp} - CFOP ${cfopItem})`
+                );
+              }
+            }
+
+            // Aplica CST do IPI (dentro de <IPI><IPITrib> ou <IPI><IPINT>)
+            if (cstRules.ipi) {
+              const regexCstIpi = /(<IPI[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i;
+              if (regexCstIpi.test(detBlockEditado)) {
+                detBlockEditado = detBlockEditado.replace(
+                  regexCstIpi,
+                  `$1$2${cstRules.ipi}$3`
+                );
+                alteracoes.push(
+                  `CST IPI alterado para ${cstRules.ipi} (${tipoOp} - CFOP ${cfopItem})`
+                );
+              }
+            }
+
+            // Aplica CST do PIS (dentro de <PIS><PISAliq>, <PIS><PISQtde>, etc.)
+            if (cstRules.pis) {
+              const regexCstPis = /(<PIS[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i;
+              if (regexCstPis.test(detBlockEditado)) {
+                detBlockEditado = detBlockEditado.replace(
+                  regexCstPis,
+                  `$1$2${cstRules.pis}$3`
+                );
+                alteracoes.push(
+                  `CST PIS alterado para ${cstRules.pis} (${tipoOp} - CFOP ${cfopItem})`
+                );
+              }
+            }
+
+            // Aplica CST do COFINS (dentro de <COFINS><COFINSAliq>, etc.)
+            if (cstRules.cofins) {
+              const regexCstCofins =
+                /(<COFINS[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i;
+              if (regexCstCofins.test(detBlockEditado)) {
+                detBlockEditado = detBlockEditado.replace(
+                  regexCstCofins,
+                  `$1$2${cstRules.cofins}$3`
+                );
+                alteracoes.push(
+                  `CST COFINS alterado para ${cstRules.cofins} (${tipoOp} - CFOP ${cfopItem})`
+                );
+              }
+            }
+
+            // Substitui o bloco <det> original pelo editado
+            if (detBlockEditado !== detBlock) {
+              xmlEditado = xmlEditado.replace(detBlock, detBlockEditado);
+            }
+          }
+        }
+      }
+    }
+
+    // 10. Atualiza as datas (REGEX)
     if (novaData) {
       const novaDataFormatada = formatarDataParaXml(novaData);
 
@@ -967,7 +1100,8 @@ export function editarChavesXml(
   novoDestinatario: DadosDestinatario | null = null,
   produtos: Array<
     DadosProduto & { isPrincipal: boolean; ordem: number }
-  > | null = null
+  > | null = null,
+  cstMappings: CstMappingData[] | null = null
 ): ResultadoEdicao {
   // Detecção rápida do tipo de documento
   if (xmlContent.includes("<procEventoNFe")) {
@@ -999,7 +1133,8 @@ export function editarChavesXml(
       novaSerie,
       novoEmitente,
       novoDestinatario,
-      produtos
+      produtos,
+      cstMappings
     );
   } else if (
     xmlContent.includes("<procInutNFe") ||
@@ -1039,7 +1174,8 @@ export function editarChavesEmLote(
   novoDestinatario: DadosDestinatario | null = null,
   produtos: Array<
     DadosProduto & { isPrincipal: boolean; ordem: number }
-  > | null = null
+  > | null = null,
+  cstMappings: CstMappingData[] | null = null
 ): ResultadoEdicao[] {
   const resultados: ResultadoEdicao[] = [];
 
@@ -1055,7 +1191,8 @@ export function editarChavesEmLote(
       novaSerie,
       novoEmitente,
       novoDestinatario,
-      produtos
+      produtos,
+      cstMappings
     );
     resultados.push(resultado);
   }

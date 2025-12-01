@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-helper";
 import { getUserProfile } from "@/app/actions/profile";
-import { ProfileEditForm } from "@/components/configuracoes/profile-user-form";
+import { ProfileEditForm } from "@/components/settings/profile-user-form";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";

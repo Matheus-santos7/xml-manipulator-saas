@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -9,6 +10,38 @@ async function main() {
     update: {},
     create: { name: "Nerus Dev Workspace", slug: "dev-nerus" },
   });
+
+  // ===================== USUÁRIOS =====================
+  const hashedPassword = await bcrypt.hash("123456", 10);
+
+  const adminUser = await prisma.user.upsert({
+    where: { email: "nerus@nerus.com" },
+    update: {},
+    create: {
+      email: "nerus@nerus.com",
+      name: "Admin Nerus",
+      password: hashedPassword,
+      role: "admin",
+    },
+  });
+
+  // Criar WorkspaceMember para o admin
+  await prisma.workspaceMember.upsert({
+    where: {
+      workspaceId_userId: {
+        workspaceId: workspace.id,
+        userId: adminUser.id,
+      },
+    },
+    update: {},
+    create: {
+      workspaceId: workspace.id,
+      userId: adminUser.id,
+      role: "admin",
+    },
+  });
+
+  console.log("✅ Usuário admin criado: nerus@nerus.com (senha: 123456)");
 
   // ===================== GRUPO_MULTI =====================
   const multiProfile = await prisma.profile.upsert({
@@ -135,11 +168,16 @@ async function main() {
     where: { scenarioId: multiScenario.id },
   });
   const multiCst = [
-    { cfop: "6105", icms: "00", ipi: "50", pis: "01", cofins: "01" },
-    { cfop: "5949", icms: "00", ipi: "55", pis: "09", cofins: "09" },
-    { cfop: "1949", icms: "00", ipi: "55", pis: "09", cofins: "09" },
-    { cfop: "1201", icms: "00", ipi: "50", pis: "01", cofins: "01" },
-    { cfop: "2201", icms: "00", ipi: "50", pis: "01", cofins: "01" },
+    { tipoOperacao: "VENDA", icms: "00", ipi: "50", pis: "01", cofins: "01" },
+    {
+      tipoOperacao: "DEVOLUCAO",
+      icms: "00",
+      ipi: "50",
+      pis: "01",
+      cofins: "01",
+    },
+    { tipoOperacao: "RETORNO", icms: "00", ipi: "55", pis: "09", cofins: "09" },
+    { tipoOperacao: "REMESSA", icms: "00", ipi: "55", pis: "09", cofins: "09" },
   ];
   for (const m of multiCst)
     await prisma.cstMapping.create({
@@ -272,9 +310,16 @@ async function main() {
     where: { scenarioId: itatiaiaScenario.id },
   });
   const itatiaiaCst = [
-    { cfop: "6105", icms: "00", ipi: "50", pis: "01", cofins: "01" },
-    { cfop: "5949", icms: "00", ipi: "55", pis: "08", cofins: "08" },
-    { cfop: "1949", icms: "00", ipi: "55", pis: "08", cofins: "08" },
+    { tipoOperacao: "VENDA", icms: "00", ipi: "50", pis: "01", cofins: "01" },
+    {
+      tipoOperacao: "DEVOLUCAO",
+      icms: "00",
+      ipi: "50",
+      pis: "01",
+      cofins: "01",
+    },
+    { tipoOperacao: "RETORNO", icms: "00", ipi: "55", pis: "08", cofins: "08" },
+    { tipoOperacao: "REMESSA", icms: "00", ipi: "55", pis: "08", cofins: "08" },
   ];
   for (const m of itatiaiaCst)
     await prisma.cstMapping.create({
@@ -404,11 +449,16 @@ async function main() {
     where: { scenarioId: sodimacScenario.id },
   });
   const sodimacCst = [
-    { cfop: "6105", icms: "00", ipi: "50", pis: "01", cofins: "01" },
-    { cfop: "5949", icms: "00", ipi: "55", pis: "09", cofins: "09" },
-    { cfop: "1949", icms: "00", ipi: "55", pis: "09", cofins: "09" },
-    { cfop: "1201", icms: "00", ipi: "50", pis: "01", cofins: "01" },
-    { cfop: "2201", icms: "00", ipi: "50", pis: "01", cofins: "01" },
+    { tipoOperacao: "VENDA", icms: "00", ipi: "50", pis: "01", cofins: "01" },
+    {
+      tipoOperacao: "DEVOLUCAO",
+      icms: "00",
+      ipi: "50",
+      pis: "01",
+      cofins: "01",
+    },
+    { tipoOperacao: "RETORNO", icms: "00", ipi: "55", pis: "09", cofins: "09" },
+    { tipoOperacao: "REMESSA", icms: "00", ipi: "55", pis: "09", cofins: "09" },
   ];
   for (const m of sodimacCst)
     await prisma.cstMapping.create({
