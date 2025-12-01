@@ -58,7 +58,7 @@ export function LoginForm() {
           </div>
         </div>
         <div className="text-center">
-          <CardTitle className="text-2xl font-bold">XML SaaS</CardTitle>
+          <CardTitle className="text-2xl font-bold">ToolsMS</CardTitle>
           <CardDescription className="mt-2">
             Entre com seu email para acessar o sistema
           </CardDescription>

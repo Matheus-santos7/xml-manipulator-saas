@@ -38,7 +38,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -656,7 +655,7 @@ export function ScenarioEditor({
                   <TabsTrigger value="cst">Mapeamento CST</TabsTrigger>
                 </TabsList>
 
-                <ScrollArea className="flex-1 h-[calc(90vh-200px)] pr-4 mt-4">
+                <div className="flex-1 overflow-y-auto pr-4 mt-4 max-h-[calc(90vh-220px)]">
                   {/* ─────────────── ABA GERAL ─────────────── */}
                   <TabsContent value="geral" className="space-y-4 mt-0">
                     <div className="grid grid-cols-2 gap-4">
@@ -2015,7 +2014,7 @@ export function ScenarioEditor({
                       </div>
                     )}
                   </TabsContent>
-                </ScrollArea>
+                </div>
               </Tabs>
 
               <DialogFooter className="mt-4 pt-4 border-t">

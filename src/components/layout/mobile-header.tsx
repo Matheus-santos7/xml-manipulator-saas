@@ -38,7 +38,7 @@ export function MobileHeader({
       {/* Logo visível apenas no mobile header */}
       <div className="flex items-center gap-2 font-bold text-lg md:hidden">
         <FileCog className="h-5 w-5 text-primary" />
-        XML SaaS
+        ToolsMS
       </div>
     </header>
   );

@@ -96,7 +96,7 @@ export function Sidebar({ userEmail, userName, isAdmin }: SidebarProps) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <FileCog className="h-5 w-5" />
           </div>
-          <span className="">XML SaaS</span>
+          <span className="">ToolsMS</span>
         </Link>
       </div>
 
