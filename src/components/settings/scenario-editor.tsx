@@ -324,7 +324,11 @@ export function ScenarioEditor({
       cstMappings:
         (scenarioToEdit?.CstMapping || scenarioToEdit?.cstMappings)?.map(
           (m) => ({
-            tipoOperacao: m.tipoOperacao,
+            tipoOperacao: m.tipoOperacao as
+              | "VENDA"
+              | "DEVOLUCAO"
+              | "RETORNO"
+              | "REMESSA",
             icms: m.icms ?? "",
             ipi: m.ipi ?? "",
             pis: m.pis ?? "",
