@@ -49,7 +49,7 @@ import {
 import { toast } from "sonner";
 import { saveScenario, deleteScenario } from "@/app/actions/settings";
 import type { ScenarioDB } from "@/types";
-import { Trash2, Plus, Pencil, Search, Loader2 } from "lucide-react";
+import { Trash2, Plus, Pencil, Search, Loader2, Copy } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Schema Zod para validação do formulário
@@ -159,6 +159,7 @@ interface ScenarioEditorProps {
   profileId: string;
   scenarioToEdit?: ScenarioDB | null;
   onSaved?: () => void;
+  isDuplicating?: boolean; // Quando true, cria um novo cenário baseado no scenarioToEdit
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -168,12 +169,14 @@ export function ScenarioEditor({
   profileId,
   scenarioToEdit,
   onSaved,
+  isDuplicating = false,
 }: ScenarioEditorProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showUnsavedAlert, setShowUnsavedAlert] = useState(false);
 
-  const isEditing = !!scenarioToEdit;
+  // Se estiver duplicando, não é edição (cria novo cenário)
+  const isEditing = !!scenarioToEdit && !isDuplicating;
 
   // Valores padrão baseados no cenário existente ou vazios
   // Usa useMemo com scenarioToEdit completo como dependência
@@ -286,10 +289,16 @@ export function ScenarioEditor({
       };
     };
 
+    // Nome do cenário: se duplicando, adiciona " (Cópia)"
+    const scenarioName = isDuplicating 
+      ? `${scenarioToEdit?.name ?? ""} (Cópia)` 
+      : (scenarioToEdit?.name ?? "");
+
     return {
-      id: scenarioToEdit?.id,
+      // Se duplicando, não passa o id para criar um novo cenário
+      id: isDuplicating ? undefined : scenarioToEdit?.id,
       profileId,
-      name: scenarioToEdit?.name ?? "",
+      name: scenarioName,
       active: scenarioToEdit?.active ?? true,
 
       // Flags
@@ -336,7 +345,7 @@ export function ScenarioEditor({
           })
         ) ?? [],
     };
-  }, [profileId, scenarioToEdit]); // Agora depende do objeto completo
+  }, [profileId, scenarioToEdit, isDuplicating]); // Depende também do isDuplicating
 
   const form = useForm({
     defaultValues,
@@ -562,17 +571,28 @@ export function ScenarioEditor({
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button
-            variant={isEditing ? "outline" : "default"}
-            size={isEditing ? "sm" : "default"}
+            variant={isEditing || isDuplicating ? "outline" : "default"}
+            size={isEditing || isDuplicating ? "sm" : "default"}
+            title={isDuplicating ? "Duplicar cenário" : isEditing ? "Editar cenário" : "Criar novo cenário"}
           >
-            {isEditing ? <Pencil className="h-4 w-4" /> : "Novo Cenário"}
+            {isDuplicating ? (
+              <Copy className="h-4 w-4" />
+            ) : isEditing ? (
+              <Pencil className="h-4 w-4" />
+            ) : (
+              "Novo Cenário"
+            )}
           </Button>
         </DialogTrigger>
 
         <DialogContent className="max-w-[90vw] w-[1200px] max-h-[90vh] h-auto flex flex-col">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle>
-              {isEditing ? "Editar Cenário" : "Novo Cenário"}
+              {isDuplicating 
+                ? "Duplicar Cenário" 
+                : isEditing 
+                  ? "Editar Cenário" 
+                  : "Novo Cenário"}
             </DialogTitle>
             {isEditing && (
               <AlertDialog>

@@ -280,10 +280,19 @@ export default async function SettingsPage(props: {
                       </div>
 
                       {permissions.canManageScenarios && (
-                        <ScenarioEditor
-                          profileId={selectedProfileId}
-                          scenarioToEdit={scenario}
-                        />
+                        <div className="flex items-center gap-2">
+                          {/* Botão Duplicar */}
+                          <ScenarioEditor
+                            profileId={selectedProfileId}
+                            scenarioToEdit={scenario}
+                            isDuplicating={true}
+                          />
+                          {/* Botão Editar */}
+                          <ScenarioEditor
+                            profileId={selectedProfileId}
+                            scenarioToEdit={scenario}
+                          />
+                        </div>
                       )}
                     </div>
                   ))}
