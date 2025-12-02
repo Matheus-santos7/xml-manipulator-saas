@@ -1,15 +1,69 @@
 import { db } from "@/app/lib/db";
+import { getCurrentUser } from "@/lib/auth-helper";
+import { redirect } from "next/navigation";
 import XmlProcessorClient from "@/components/xml-manipulator/processor-client";
 
 export default async function ManipuladorPage() {
-  // Autenticação comentada por enquanto
-  // const session = await auth();
+  // Verificar autenticação
+  const currentUser = await getCurrentUser();
 
-  // Busca os cenários disponíveis (sem filtro de usuário por enquanto para teste)
-  const scenarios = await db.scenario.findMany({
-    where: { active: true },
-    select: { id: true, name: true },
-  });
+  if (!currentUser) {
+    redirect("/login");
+  }
+
+  const { role, profileId: userProfileId, workspaceId } = currentUser;
+
+  // Busca os cenários disponíveis baseado nas permissões
+  let scenarios;
+
+  if (role === "admin") {
+    // Admin vê todos os cenários ativos do workspace
+    scenarios = await db.scenario.findMany({
+      where: {
+        active: true,
+        Profile: {
+          workspaceId: workspaceId,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        Profile: {
+          select: {
+            name: true,
+          },
+        },
+      },
+      orderBy: [{ Profile: { name: "asc" } }, { name: "asc" }],
+    });
+
+    // Formata para incluir nome da empresa
+    scenarios = scenarios.map((s) => ({
+      id: s.id,
+      name: `${s.Profile.name} - ${s.name}`,
+    }));
+  } else {
+    // Membro vê apenas cenários da sua empresa
+    if (!userProfileId) {
+      return (
+        <div className="container mx-auto py-8">
+          <div className="text-center text-muted-foreground">
+            <p>Você não possui uma empresa associada.</p>
+            <p>Entre em contato com o administrador.</p>
+          </div>
+        </div>
+      );
+    }
+
+    scenarios = await db.scenario.findMany({
+      where: {
+        active: true,
+        profileId: userProfileId,
+      },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+  }
 
   return (
     <div className="container mx-auto py-8">

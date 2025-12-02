@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import type { Scenario } from "@prisma/client";
+import { getCurrentUser, canAccessProfile } from "@/lib/auth-helper";
 
 // --- Sub-schemas de Validação ---
 const emitenteSchema = z
@@ -240,6 +241,25 @@ export type SaveScenarioInput = z.infer<typeof scenarioSchema> & {
 };
 
 export async function saveScenario(data: SaveScenarioInput) {
+  // Verificar autenticação e permissão
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    return { success: false, error: "Usuário não autenticado" };
+  }
+
+  if (!currentUser.permissions.canManageScenarios) {
+    return { success: false, error: "Sem permissão para gerenciar cenários" };
+  }
+
+  // Verificar se o usuário tem acesso ao profile
+  if (!canAccessProfile(currentUser, data.profileId)) {
+    return {
+      success: false,
+      error: "Sem permissão para gerenciar cenários desta empresa",
+    };
+  }
+
   // Utilitário: parseia um JSON string ou retorna o objeto
   const parseMaybeJson = (v: unknown): Record<string, unknown> | undefined => {
     if (v == null) return undefined;
@@ -404,7 +424,36 @@ export async function deleteScenario(scenarioId: string) {
     return { success: false, error: "ID do cenário não informado" };
   }
 
+  // Verificar autenticação e permissão
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    return { success: false, error: "Usuário não autenticado" };
+  }
+
+  if (!currentUser.permissions.canManageScenarios) {
+    return { success: false, error: "Sem permissão para gerenciar cenários" };
+  }
+
   try {
+    // Buscar o cenário para verificar o profileId
+    const scenario = await db.scenario.findUnique({
+      where: { id: scenarioId },
+      select: { profileId: true },
+    });
+
+    if (!scenario) {
+      return { success: false, error: "Cenário não encontrado" };
+    }
+
+    // Verificar se o usuário tem acesso ao profile do cenário
+    if (!canAccessProfile(currentUser, scenario.profileId)) {
+      return {
+        success: false,
+        error: "Sem permissão para deletar cenários desta empresa",
+      };
+    }
+
     // As relações com onDelete: Cascade cuidam das tabelas filhas
     await db.scenario.delete({
       where: { id: scenarioId },
@@ -412,6 +461,7 @@ export async function deleteScenario(scenarioId: string) {
 
     revalidatePath("/dashboard/configuracoes");
     revalidatePath("/configuracoes");
+    revalidatePath("/settings");
     return { success: true };
   } catch (error) {
     console.error("Erro ao deletar cenário:", error);
