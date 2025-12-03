@@ -810,14 +810,15 @@ function editarChavesCTe(
       ];
 
       // Campos do endereço <enderReme>
-      // Baseado no modelo Python: xLgr, nro, xCpl, xBairro, xMun, UF, fone
-      // Note: cMun, CEP, cPais, xPais não são alterados no Python para enderReme
+      // Inclui: xLgr, nro, xCpl, xBairro, cMun, xMun, CEP, UF, fone
       const camposEnderReme = [
         { campo: "xLgr", valor: novoEmitente.xLgr },
         { campo: "nro", valor: novoEmitente.nro },
         { campo: "xCpl", valor: novoEmitente.xCpl },
         { campo: "xBairro", valor: novoEmitente.xBairro },
+        { campo: "cMun", valor: novoEmitente.cMun },
         { campo: "xMun", valor: novoEmitente.xMun },
+        { campo: "CEP", valor: novoEmitente.CEP },
         { campo: "UF", valor: novoEmitente.UF },
         { campo: "fone", valor: novoEmitente.fone },
       ];
@@ -826,14 +827,13 @@ function editarChavesCTe(
       // A estratégia é: encontrar o bloco <rem>...</rem> e substituir as tags dentro dele
       for (const { campo, valor } of camposRem) {
         if (valor && valor.trim() !== "") {
-          // Regex simples: encontra a tag em qualquer lugar do XML
-          // Como <rem> é único no CTe, podemos usar uma regex global mais simples
+          // Regex para encontrar tag dentro de <rem> mas fora de <enderReme>
           const regex = new RegExp(
-            `(<rem>[\\s\\S]*?<${campo}>)[^<]*(</\${campo}>)`,
+            `(<rem>(?:(?!<enderReme>)[\\s\\S])*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
             "i"
           );
           if (regex.test(xmlEditado)) {
-            xmlEditado = xmlEditado.replace(regex, `$1${valor}$2`);
+            xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
             alteracoes.push(`Remetente: <${campo}> alterado para ${valor}`);
           }
         }
@@ -844,11 +844,11 @@ function editarChavesCTe(
         if (valor && valor.trim() !== "") {
           // Regex para encontrar tag dentro de <enderReme>
           const regex = new RegExp(
-            `(<enderReme>[\\s\\S]*?<${campo}>)[^<]*(</\${campo}>)`,
+            `(<enderReme[^>]*>[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
             "i"
           );
           if (regex.test(xmlEditado)) {
-            xmlEditado = xmlEditado.replace(regex, `$1${valor}$2`);
+            xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
             alteracoes.push(
               `Remetente Endereço: <${campo}> alterado para ${valor}`
             );
