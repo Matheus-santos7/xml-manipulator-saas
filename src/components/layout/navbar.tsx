@@ -27,10 +27,10 @@ export function Navbar() {
       active: pathname.includes("/manipulador"),
     },
     {
-      href: "/configuracoes",
+      href: "/settings",
       label: "Configurações",
       icon: Settings,
-      active: pathname.includes("/configuracoes"),
+      active: pathname.includes("/settings"),
     },
   ];
 

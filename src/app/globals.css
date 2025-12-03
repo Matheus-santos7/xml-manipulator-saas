@@ -41,8 +41,38 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* ========================================
+   * ROLE-BASED THEME COLORS
+   * Cores baseadas no papel do usuário
+   * ======================================== */
+
+  /* Admin Theme Colors (Roxo/Violeta) */
+  --color-role-admin: var(--role-admin);
+  --color-role-admin-foreground: var(--role-admin-foreground);
+  --color-role-admin-muted: var(--role-admin-muted);
+  --color-role-admin-accent: var(--role-admin-accent);
+  --color-role-admin-border: var(--role-admin-border);
+
+  /* Member Theme Colors (Azul) */
+  --color-role-member: var(--role-member);
+  --color-role-member-foreground: var(--role-member-foreground);
+  --color-role-member-muted: var(--role-member-muted);
+  --color-role-member-accent: var(--role-member-accent);
+  --color-role-member-border: var(--role-member-border);
+
+  /* Success, Warning, Info */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
 }
 
+/* ==========================================
+ * LIGHT MODE - DEFAULT (BASE)
+ * ========================================== */
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -76,8 +106,37 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* ========================================
+   * ROLE-BASED COLORS - LIGHT MODE
+   * ======================================== */
+
+  /* Admin (Roxo/Violeta - transmite autoridade e poder) */
+  --role-admin: oklch(0.55 0.25 290);
+  --role-admin-foreground: oklch(1 0 0);
+  --role-admin-muted: oklch(0.95 0.03 290);
+  --role-admin-accent: oklch(0.65 0.2 290);
+  --role-admin-border: oklch(0.75 0.15 290);
+
+  /* Member (Azul - transmite confiança e calma) */
+  --role-member: oklch(0.55 0.2 240);
+  --role-member-foreground: oklch(1 0 0);
+  --role-member-muted: oklch(0.95 0.03 240);
+  --role-member-accent: oklch(0.65 0.15 240);
+  --role-member-border: oklch(0.75 0.1 240);
+
+  /* Status Colors - Light */
+  --success: oklch(0.55 0.18 145);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.75 0.18 75);
+  --warning-foreground: oklch(0.25 0 0);
+  --info: oklch(0.55 0.18 220);
+  --info-foreground: oklch(1 0 0);
 }
 
+/* ==========================================
+ * DARK MODE
+ * ========================================== */
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -110,6 +169,84 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* ========================================
+   * ROLE-BASED COLORS - DARK MODE
+   * ======================================== */
+
+  /* Admin (Roxo/Violeta - mais vibrante no dark mode) */
+  --role-admin: oklch(0.7 0.22 290);
+  --role-admin-foreground: oklch(0.15 0 0);
+  --role-admin-muted: oklch(0.25 0.08 290);
+  --role-admin-accent: oklch(0.8 0.18 290);
+  --role-admin-border: oklch(0.5 0.15 290);
+
+  /* Member (Azul - mais vibrante no dark mode) */
+  --role-member: oklch(0.7 0.18 240);
+  --role-member-foreground: oklch(0.15 0 0);
+  --role-member-muted: oklch(0.25 0.06 240);
+  --role-member-accent: oklch(0.8 0.14 240);
+  --role-member-border: oklch(0.5 0.12 240);
+
+  /* Status Colors - Dark */
+  --success: oklch(0.7 0.16 145);
+  --success-foreground: oklch(0.15 0 0);
+  --warning: oklch(0.8 0.16 75);
+  --warning-foreground: oklch(0.15 0 0);
+  --info: oklch(0.7 0.16 220);
+  --info-foreground: oklch(0.15 0 0);
+}
+
+/* ==========================================
+ * ROLE-SPECIFIC THEME OVERRIDES
+ * Aplique a classe .theme-admin ou .theme-member no <html> ou <body>
+ * para ativar as cores específicas do papel
+ * ========================================== */
+
+/* Admin Theme - Light Mode */
+.theme-admin {
+  --primary: var(--role-admin);
+  --primary-foreground: var(--role-admin-foreground);
+  --ring: var(--role-admin);
+  --sidebar-primary: var(--role-admin);
+  --sidebar-primary-foreground: var(--role-admin-foreground);
+  --accent: var(--role-admin-muted);
+  --sidebar-accent: var(--role-admin-muted);
+}
+
+/* Admin Theme - Dark Mode */
+.dark.theme-admin,
+.dark .theme-admin {
+  --primary: var(--role-admin);
+  --primary-foreground: var(--role-admin-foreground);
+  --ring: var(--role-admin);
+  --sidebar-primary: var(--role-admin);
+  --sidebar-primary-foreground: var(--role-admin-foreground);
+  --accent: var(--role-admin-muted);
+  --sidebar-accent: var(--role-admin-muted);
+}
+
+/* Member Theme - Light Mode */
+.theme-member {
+  --primary: var(--role-member);
+  --primary-foreground: var(--role-member-foreground);
+  --ring: var(--role-member);
+  --sidebar-primary: var(--role-member);
+  --sidebar-primary-foreground: var(--role-member-foreground);
+  --accent: var(--role-member-muted);
+  --sidebar-accent: var(--role-member-muted);
+}
+
+/* Member Theme - Dark Mode */
+.dark.theme-member,
+.dark .theme-member {
+  --primary: var(--role-member);
+  --primary-foreground: var(--role-member-foreground);
+  --ring: var(--role-member);
+  --sidebar-primary: var(--role-member);
+  --sidebar-primary-foreground: var(--role-member-foreground);
+  --accent: var(--role-member-muted);
+  --sidebar-accent: var(--role-member-muted);
 }
 
 @layer base {
@@ -118,5 +255,63 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ==========================================
+ * UTILITY CLASSES
+ * Classes utilitárias para uso direto nos componentes
+ * ========================================== */
+@layer utilities {
+  /* Role Badge Styles */
+  .badge-admin {
+    @apply bg-role-admin text-role-admin-foreground;
+  }
+
+  .badge-member {
+    @apply bg-role-member text-role-member-foreground;
+  }
+
+  /* Role Button Variants */
+  .btn-admin {
+    @apply bg-role-admin text-role-admin-foreground hover:bg-role-admin-accent;
+  }
+
+  .btn-member {
+    @apply bg-role-member text-role-member-foreground hover:bg-role-member-accent;
+  }
+
+  /* Role Border Variants */
+  .border-role-admin-styled {
+    @apply border-role-admin-border;
+  }
+
+  .border-role-member-styled {
+    @apply border-role-member-border;
+  }
+
+  /* Status Utilities */
+  .text-success {
+    @apply text-success;
+  }
+
+  .text-warning {
+    @apply text-warning;
+  }
+
+  .text-info {
+    @apply text-info;
+  }
+
+  .bg-success-muted {
+    @apply bg-success/10;
+  }
+
+  .bg-warning-muted {
+    @apply bg-warning/10;
+  }
+
+  .bg-info-muted {
+    @apply bg-info/10;
   }
 }

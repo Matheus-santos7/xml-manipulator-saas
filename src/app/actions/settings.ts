@@ -135,7 +135,7 @@ export async function saveProfile(data: FormData) {
       workspaceId: workspace.id,
     },
   });
-  revalidatePath("/dashboard/configuracoes");
+  revalidatePath("/dashboard/settings");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -193,8 +193,8 @@ export async function updateProfile(data: UpdateProfileInput) {
       },
     });
 
-    revalidatePath("/dashboard/configuracoes");
-    revalidatePath("/configuracoes");
+    revalidatePath("/dashboard/settings");
+    revalidatePath("/settings");
     return { success: true };
   } catch (error) {
     console.error("Erro ao atualizar empresa:", error);
@@ -411,8 +411,8 @@ export async function saveScenario(data: SaveScenarioInput) {
     }
   }
 
-  revalidatePath("/dashboard/configuracoes");
-  revalidatePath("/configuracoes");
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/settings");
   return { success: true };
 }
 
@@ -459,8 +459,8 @@ export async function deleteScenario(scenarioId: string) {
       where: { id: scenarioId },
     });
 
-    revalidatePath("/dashboard/configuracoes");
-    revalidatePath("/configuracoes");
+    revalidatePath("/dashboard/settings");
+    revalidatePath("/settings");
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
@@ -488,8 +488,8 @@ export async function deleteProfile(profileId: string) {
       where: { id: profileId },
     });
 
-    revalidatePath("/dashboard/configuracoes");
-    revalidatePath("/configuracoes");
+    revalidatePath("/dashboard/settings");
+    revalidatePath("/settings");
     return { success: true };
   } catch (error) {
     console.error("Erro ao deletar empresa:", error);

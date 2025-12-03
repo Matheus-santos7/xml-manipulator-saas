@@ -102,7 +102,7 @@ export async function updateMemberRole(
       data: { role: newRole },
     });
 
-    revalidatePath("/configuracoes/users");
+    revalidatePath("/settings/users");
     return { success: true };
   } catch (error) {
     console.error("Erro ao atualizar role:", error);
@@ -157,7 +157,7 @@ export async function updateMemberProfile(
       });
     }
 
-    revalidatePath("/configuracoes/users");
+    revalidatePath("/settings/users");
     return { success: true };
   } catch (error) {
     console.error("Erro ao atualizar profile:", error);
@@ -203,7 +203,7 @@ export async function removeMember(
       where: { id: memberId },
     });
 
-    revalidatePath("/configuracoes/users");
+    revalidatePath("/settings/users");
     return { success: true };
   } catch (error) {
     console.error("Erro ao remover membro:", error);
@@ -277,7 +277,7 @@ export async function updateUserByAdmin(data: {
       });
     }
 
-    revalidatePath("/configuracoes/users");
+    revalidatePath("/settings/users");
     return { success: true };
   } catch (error) {
     console.error("Erro ao atualizar usuário pelo admin:", error);

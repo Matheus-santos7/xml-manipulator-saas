@@ -106,7 +106,14 @@ export default async function SettingsPage(props: {
             </Button>
           )}
         </div>
-        <Badge variant={role === "admin" ? "default" : "secondary"}>
+        <Badge
+          variant="outline"
+          className={
+            role === "admin"
+              ? "border-role-admin text-role-admin bg-role-admin/10"
+              : "border-role-member text-role-member bg-role-member/10"
+          }
+        >
           <Shield className="h-3 w-3 mr-1" />
           {role === "admin" ? "Administrador" : "Usuário"}
         </Badge>
@@ -159,9 +166,9 @@ export default async function SettingsPage(props: {
                 <ScenarioEditor profileId={selectedProfileId} />
               )}
             </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
+            <CardContent className="flex-1 overflow-y-auto bg-muted/30 p-6">
               {!selectedProfileId ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
                   <Building2 className="h-10 w-10 opacity-20" />
                   <p>
                     {permissions.canViewProfiles
@@ -170,7 +177,7 @@ export default async function SettingsPage(props: {
                   </p>
                 </div>
               ) : scenarios.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
                   <FileCog className="h-10 w-10 opacity-20" />
                   <p>Nenhum cenário criado para esta empresa.</p>
                   {permissions.canManageScenarios && (
@@ -184,19 +191,19 @@ export default async function SettingsPage(props: {
                   {scenarios.map((scenario) => (
                     <div
                       key={scenario.id}
-                      className="bg-white border rounded-lg p-4 flex items-center justify-between hover:shadow-md transition-all"
+                      className="bg-card border border-border rounded-lg p-4 flex items-center justify-between hover:shadow-md hover:border-primary/30 transition-all"
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-sm">
+                          <h4 className="font-semibold text-sm text-foreground">
                             {scenario.name}
                           </h4>
                           <Badge
                             variant={scenario.active ? "default" : "secondary"}
                             className={
                               scenario.active
-                                ? "bg-green-600 hover:bg-green-700"
-                                : ""
+                                ? "bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+                                : "bg-muted text-muted-foreground"
                             }
                           >
                             {scenario.active ? "Ativo" : "Inativo"}
@@ -206,7 +213,7 @@ export default async function SettingsPage(props: {
                           {scenario.reforma_tributaria && (
                             <Badge
                               variant="outline"
-                              className="text-[10px] border-blue-200 bg-blue-50 text-blue-700"
+                              className="text-[10px] border-blue-400/50 bg-blue-500/10 text-blue-600 dark:text-blue-400 dark:border-blue-500/30 dark:bg-blue-500/20"
                             >
                               Reforma Trib.
                             </Badge>

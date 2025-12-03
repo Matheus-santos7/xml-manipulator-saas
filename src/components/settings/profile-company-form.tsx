@@ -84,7 +84,7 @@ export function ProfileForm({
         toast.success("Empresa excluída com sucesso!");
         // Se a empresa excluída era a selecionada, redireciona
         if (profileId === selectedProfileId) {
-          router.push("/configuracoes");
+          router.push("/settings");
         }
         router.refresh();
       } else {
@@ -113,15 +113,15 @@ export function ProfileForm({
       {profiles.map((profile) => (
         <div
           key={profile.id}
-          className={`group flex items-center gap-2 p-3 rounded-lg border transition-all hover:bg-slate-50 ${
+          className={`group flex items-center gap-2 p-3 rounded-lg border transition-all hover:bg-muted/50 ${
             profile.id === selectedProfileId
               ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
-              : "border-gray-100"
+              : "border-border"
           }`}
         >
-          <a href={`/configuracoes?profileId=${profile.id}`} className="flex-1">
-            <div className="font-medium">{profile.name}</div>
-            <div className="text-xs text-gray-500">{profile.cnpj}</div>
+          <a href={`/settings?profileId=${profile.id}`} className="flex-1">
+            <div className="font-medium text-foreground">{profile.name}</div>
+            <div className="text-xs text-muted-foreground">{profile.cnpj}</div>
           </a>
 
           {canManage && (
@@ -186,8 +186,11 @@ export function ProfileForm({
 
       {/* Formulário para adicionar empresa - apenas para admins */}
       {canManage && (
-        <form action={handleSubmit} className="mt-4 pt-4 border-t space-y-2">
-          <p className="text-xs font-semibold text-gray-500 uppercase">
+        <form
+          action={handleSubmit}
+          className="mt-4 pt-4 border-t border-border space-y-2"
+        >
+          <p className="text-xs font-semibold text-muted-foreground uppercase">
             Adicionar Nova Empresa
           </p>
           <div className="space-y-2">

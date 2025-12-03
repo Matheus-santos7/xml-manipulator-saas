@@ -138,7 +138,14 @@ export default function XmlProcessorClient({
 
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, `xmls_processados_${new Date().getTime()}.zip`);
-      toast.success("Download iniciado!");
+
+      // Reseta os arquivos e dados processados após o download
+      setFiles([]);
+      setProcessedData([]);
+
+      toast.success("Download iniciado!", {
+        description: "Os arquivos foram limpos para um novo lote.",
+      });
     } catch {
       toast.error("Erro ao gerar ZIP");
     }
@@ -177,15 +184,15 @@ export default function XmlProcessorClient({
               className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                 isDragActive
                   ? "border-primary bg-primary/10"
-                  : "border-gray-200 hover:border-primary"
+                  : "border-border hover:border-primary dark:hover:border-primary"
               }`}
             >
               <input {...getInputProps()} />
-              <UploadCloud className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-              <p className="text-sm text-gray-600">
+              <UploadCloud className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
                 Arraste XMLs aqui ou clique para selecionar
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-muted-foreground/70 mt-1">
                 Suporta múltiplos arquivos
               </p>
             </div>
@@ -210,7 +217,7 @@ export default function XmlProcessorClient({
               {processedData.length > 0 && (
                 <Button
                   variant="outline"
-                  className="w-full border-green-600 text-green-700 hover:bg-green-50"
+                  className="w-full border-green-600 text-green-700 hover:bg-green-50 dark:border-green-500 dark:text-green-400 dark:hover:bg-green-500/10"
                   onClick={handleDownloadZip}
                 >
                   <Download className="mr-2 h-4 w-4" /> Baixar ZIP
@@ -221,7 +228,7 @@ export default function XmlProcessorClient({
         </Card>
 
         {files.length > 0 && (
-          <div className="text-sm text-gray-500 text-center flex items-center justify-center gap-2">
+          <div className="text-sm text-muted-foreground text-center flex items-center justify-center gap-2">
             <FileCode className="h-4 w-4" />
             {files.length} arquivos na fila
           </div>
@@ -236,13 +243,13 @@ export default function XmlProcessorClient({
           </CardHeader>
           <CardContent className="flex-1 p-0">
             {processedData.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8 space-y-2">
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 space-y-2">
                 <UploadCloud className="h-12 w-12 opacity-20" />
                 <p>Os resultados aparecerão aqui após o processamento.</p>
               </div>
             ) : (
               <ScrollArea className="h-[500px] w-full px-4">
-                <div className="divide-y divide-gray-100 pb-4">
+                <div className="divide-y divide-border pb-4">
                   {processedData
                     .sort((a, b) => {
                       // Extrai o número da nota do nome do arquivo (primeira parte antes do hífen)
@@ -259,7 +266,7 @@ export default function XmlProcessorClient({
                     .map((item, idx) => (
                       <div
                         key={idx}
-                        className="py-4 hover:bg-slate-50 transition-colors rounded px-2"
+                        className="py-4 hover:bg-muted/50 transition-colors rounded px-2"
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-3">
@@ -271,12 +278,12 @@ export default function XmlProcessorClient({
                               <AlertCircle className="h-5 w-5 text-yellow-500 shrink-0" />
                             )}
                             <div className="flex flex-col">
-                              <span className="font-medium text-sm text-gray-900">
+                              <span className="font-medium text-sm text-foreground">
                                 {item.newName || item.originalName}
                               </span>
                               {item.newName &&
                                 item.newName !== item.originalName && (
-                                  <span className="text-xs text-gray-400 line-through">
+                                  <span className="text-xs text-muted-foreground line-through">
                                     {item.originalName}
                                   </span>
                                 )}
@@ -301,12 +308,12 @@ export default function XmlProcessorClient({
 
                         {item.logs.length > 0 && (
                           <div
-                            className={`mt-2 ml-8 p-2 rounded text-xs font-mono border ${
+                            className={`mt-2 ml-8 p-3 rounded-lg text-xs font-mono border ${
                               item.status === "error"
-                                ? "bg-red-50 text-red-700 border-red-200"
+                                ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30"
                                 : item.status === "skipped"
-                                ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                                : "bg-slate-100 text-slate-600 border-slate-200"
+                                ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-400 dark:border-yellow-500/30"
+                                : "bg-muted/50 text-muted-foreground border-border dark:bg-muted/30"
                             }`}
                           >
                             <ul className="list-disc pl-4 space-y-1">

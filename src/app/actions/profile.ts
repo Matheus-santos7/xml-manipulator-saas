@@ -130,7 +130,7 @@ export async function updateUserProfile(data: UpdateProfileData) {
     // Revalidar páginas importantes
     revalidatePath("/");
     revalidatePath("/manipulador");
-    revalidatePath("/configuracoes");
+    revalidatePath("/settings");
 
     return { success: true };
   } catch (error) {
@@ -217,7 +217,7 @@ export async function updateCurrentUser(
     // Revalidar páginas importantes
     revalidatePath("/");
     revalidatePath("/manipulador");
-    revalidatePath("/configuracoes");
+    revalidatePath("/settings");
 
     return { success: true };
   } catch (error) {
