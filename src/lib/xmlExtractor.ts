@@ -256,6 +256,7 @@ export function getChaveInfoForMapping(
   emit_cnpj: string;
   nfe_number: string | null;
   ref_nfe: string | null;
+  cfop: string | null;
 } | null {
   try {
     const parser = new XMLParser({
@@ -295,6 +296,17 @@ export function getChaveInfoForMapping(
           }
         }
 
+        // Extrai CFOP do primeiro item (det)
+        let cfop: string | null = null;
+        const det = infNFe.det;
+        if (det) {
+          const detItem = Array.isArray(det) ? det[0] : det;
+          const prod = detItem?.prod;
+          if (prod?.CFOP) {
+            cfop = String(prod.CFOP);
+          }
+        }
+
         return {
           doc_type: "NFe",
           caminho_completo: fileName,
@@ -302,6 +314,7 @@ export function getChaveInfoForMapping(
           emit_cnpj: cnpj,
           nfe_number: nfeNumber,
           ref_nfe: refNFe,
+          cfop: cfop,
         };
       }
     }
@@ -328,6 +341,7 @@ export function getChaveInfoForMapping(
           emit_cnpj: cnpj,
           nfe_number: null,
           ref_nfe: null,
+          cfop: null,
         };
       }
     }
@@ -352,6 +366,7 @@ export function getChaveInfoForMapping(
         emit_cnpj: cnpj,
         nfe_number: null,
         ref_nfe: null,
+        cfop: null,
       };
     }
 

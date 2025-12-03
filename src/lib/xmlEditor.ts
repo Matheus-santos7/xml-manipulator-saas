@@ -746,9 +746,12 @@ function editarChavesCTe(
     }
 
     // 3. Atualiza a chave da NFe referenciada no CTe (REGEX)
-    const infDoc = findElement(infCte, "infCTeNorm/infDoc");
-    if (infDoc?.infNFe?.chave !== undefined) {
-      const chaveNFeAtual = infDoc.infNFe.chave;
+    // Busca a chave atual diretamente no XML usando regex (mais confiável)
+    const regexChaveAtual = /<infNFe[^>]*>[\s\S]*?<chave>([^<]+)<\/chave>/i;
+    const matchChaveAtual = xmlEditado.match(regexChaveAtual);
+
+    if (matchChaveAtual && matchChaveAtual[1]) {
+      const chaveNFeAtual = matchChaveAtual[1];
 
       // Tenta atualizar pela chave mapeada
       if (chaveMapping[chaveNFeAtual]) {
@@ -795,8 +798,10 @@ function editarChavesCTe(
     }
 
     // 5. Atualiza Remetente no <rem> e <enderReme> (REGEX)
+    // No CTe, o remetente (<rem>) corresponde ao emitente da NFe
     if (novoEmitente) {
       // Campos diretos do <rem> (fora de enderReme)
+      // Baseado no modelo Python: CNPJ, xNome, xFant, IE
       const camposRem = [
         { campo: "CNPJ", valor: novoEmitente.CNPJ },
         { campo: "xNome", valor: novoEmitente.xNome },
@@ -805,30 +810,30 @@ function editarChavesCTe(
       ];
 
       // Campos do endereço <enderReme>
+      // Baseado no modelo Python: xLgr, nro, xCpl, xBairro, xMun, UF, fone
+      // Note: cMun, CEP, cPais, xPais não são alterados no Python para enderReme
       const camposEnderReme = [
         { campo: "xLgr", valor: novoEmitente.xLgr },
         { campo: "nro", valor: novoEmitente.nro },
         { campo: "xCpl", valor: novoEmitente.xCpl },
         { campo: "xBairro", valor: novoEmitente.xBairro },
-        { campo: "cMun", valor: novoEmitente.cMun },
         { campo: "xMun", valor: novoEmitente.xMun },
         { campo: "UF", valor: novoEmitente.UF },
-        { campo: "CEP", valor: novoEmitente.CEP },
-        { campo: "cPais", valor: novoEmitente.cPais },
-        { campo: "xPais", valor: novoEmitente.xPais },
         { campo: "fone", valor: novoEmitente.fone },
       ];
 
-      // Atualiza campos diretos do <rem>
+      // Atualiza campos diretos do <rem> usando regex simples
+      // A estratégia é: encontrar o bloco <rem>...</rem> e substituir as tags dentro dele
       for (const { campo, valor } of camposRem) {
-        if (valor) {
-          // Regex para encontrar tag dentro de <rem> mas fora de <enderReme>
+        if (valor && valor.trim() !== "") {
+          // Regex simples: encontra a tag em qualquer lugar do XML
+          // Como <rem> é único no CTe, podemos usar uma regex global mais simples
           const regex = new RegExp(
-            `(<rem>(?:(?!<enderReme>)[\\s\\S])*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+            `(<rem>[\\s\\S]*?<${campo}>)[^<]*(</\${campo}>)`,
             "i"
           );
           if (regex.test(xmlEditado)) {
-            xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
+            xmlEditado = xmlEditado.replace(regex, `$1${valor}$2`);
             alteracoes.push(`Remetente: <${campo}> alterado para ${valor}`);
           }
         }
@@ -836,14 +841,14 @@ function editarChavesCTe(
 
       // Atualiza campos do <enderReme>
       for (const { campo, valor } of camposEnderReme) {
-        if (valor) {
+        if (valor && valor.trim() !== "") {
           // Regex para encontrar tag dentro de <enderReme>
           const regex = new RegExp(
-            `(<enderReme[^>]*>[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
+            `(<enderReme>[\\s\\S]*?<${campo}>)[^<]*(</\${campo}>)`,
             "i"
           );
           if (regex.test(xmlEditado)) {
-            xmlEditado = xmlEditado.replace(regex, `$1$2${valor}$3`);
+            xmlEditado = xmlEditado.replace(regex, `$1${valor}$2`);
             alteracoes.push(
               `Remetente Endereço: <${campo}> alterado para ${valor}`
             );

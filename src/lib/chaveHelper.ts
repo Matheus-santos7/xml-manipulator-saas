@@ -2,6 +2,8 @@
  * Funções auxiliares para manipulação de Chaves de Acesso de NFe e CTe
  */
 
+import { VENDAS_CFOP } from "./constantes";
+
 /**
  * Calcula o dígito verificador de uma chave de acesso NFe/CTe
  *
@@ -52,6 +54,7 @@ export interface DocumentoInfo {
   emit_cnpj: string;
   nfe_number?: string | null;
   ref_nfe?: string | null;
+  cfop?: string | null; // CFOP principal do documento (primeiro item)
 }
 
 /**
@@ -255,9 +258,16 @@ export function prepararMapeamentosDeChaves(
     // Armazena no mapeamento
     chaveMapping[chaveOriginal] = novaChave;
 
-    // Se for uma venda, guarda a chave para vincular ao CTe
-    if (doc.doc_type === "NFe" && doc.caminho_completo.includes("Venda")) {
-      chaveVendaNova = novaChave;
+    // Se for uma venda (identificada pelo CFOP ou nome do arquivo), guarda a chave para vincular ao CTe
+    if (doc.doc_type === "NFe") {
+      const isVendaByCfop = doc.cfop && VENDAS_CFOP.includes(doc.cfop);
+      const isVendaByName = doc.caminho_completo
+        .toLowerCase()
+        .includes("venda");
+
+      if (isVendaByCfop || isVendaByName) {
+        chaveVendaNova = novaChave;
+      }
     }
   }
 
