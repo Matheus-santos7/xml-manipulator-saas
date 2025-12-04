@@ -8,6 +8,7 @@ import {
   useState,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 
 type Theme = "light" | "dark" | "system";
@@ -36,17 +37,6 @@ function getInitialTheme(storageKey: string, defaultTheme: Theme): Theme {
   return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
 }
 
-function getInitialRoleTheme(
-  storageKey: string,
-  defaultRoleTheme: RoleTheme
-): RoleTheme {
-  if (typeof window === "undefined") return defaultRoleTheme;
-  return (
-    (localStorage.getItem(`${storageKey}-role`) as RoleTheme) ||
-    defaultRoleTheme
-  );
-}
-
 function getSystemTheme(): "light" | "dark" {
   if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -63,13 +53,16 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<Theme>(() =>
     getInitialTheme(storageKey, defaultTheme)
   );
-  const [roleTheme, setRoleThemeState] = useState<RoleTheme>(() =>
-    getInitialRoleTheme(storageKey, defaultRoleTheme)
-  );
+  // O roleTheme sempre usa o valor do servidor (defaultRoleTheme) como fonte de verdade
+  // pois ele é calculado a partir do usuário autenticado
+  const [roleTheme, setRoleThemeState] = useState<RoleTheme>(defaultRoleTheme);
   const [mounted, setMounted] = useState(false);
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() =>
     getSystemTheme()
   );
+
+  // Ref para rastrear o valor inicial do servidor
+  const serverRoleThemeRef = useRef(defaultRoleTheme);
 
   // Calcula o tema resolvido
   const resolvedTheme = useMemo((): "light" | "dark" => {
@@ -99,9 +92,26 @@ export function ThemeProvider({
   );
 
   // Marca como montado após a primeira renderização
+  // e sincroniza o localStorage com o valor do servidor
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // Sincroniza o localStorage com o valor inicial do servidor
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`${storageKey}-role`, defaultRoleTheme);
+    }
+  }, [defaultRoleTheme, storageKey]);
+
+  // Sincroniza o roleTheme quando o valor do servidor mudar (ex: login de outro usuário)
+  useEffect(() => {
+    if (defaultRoleTheme !== serverRoleThemeRef.current) {
+      serverRoleThemeRef.current = defaultRoleTheme;
+      setRoleThemeState(defaultRoleTheme);
+      // Também atualiza o localStorage para manter consistência
+      if (typeof window !== "undefined") {
+        localStorage.setItem(`${storageKey}-role`, defaultRoleTheme);
+      }
+    }
+  }, [defaultRoleTheme, storageKey]);
 
   // Aplica o tema quando muda
   useEffect(() => {
