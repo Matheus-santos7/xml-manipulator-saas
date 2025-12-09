@@ -39,15 +39,16 @@ model CstMapping {
 }
 
 model Profile {
-  id              String            @id @default(cuid())
-  workspaceId     String
-  name            String
-  cnpj            String            @unique
-  razaoSocial     String?
-  endereco        Json?
-  Workspace       Workspace         @relation(fields: [workspaceId], references: [id])
-  Scenario        Scenario[]
-  WorkspaceMember WorkspaceMember[]
+  id                  String            @id @default(cuid())
+  workspaceId         String
+  name                String
+  cnpj                String            @unique
+  razaoSocial         String?
+  endereco            Json?
+  deletedAt           DateTime?         // Soft delete - data de exclusão
+  Workspace           Workspace         @relation(fields: [workspaceId], references: [id])
+  Scenario            Scenario[]
+  WorkspaceMember     WorkspaceMember[]
   DivergenceSummaries DivergenceSummary[]
 }
 
@@ -56,6 +57,7 @@ model Scenario {
   profileId                 String
   name                      String
   active                    Boolean               @default(true)
+  deletedAt                 DateTime?             // Soft delete - data de exclusão
   editar_emitente           Boolean               @default(false)
   editar_produtos           Boolean               @default(false)
   editar_impostos           Boolean               @default(false)
@@ -177,6 +179,7 @@ model User {
   role            String            @default("user") // "user" ou "admin" (System Admin)
   emailVerified   DateTime?
   image           String?
+  deletedAt       DateTime?         // Soft delete - data de exclusão
   Account         Account[]
   Session         Session[]
   WorkspaceMember WorkspaceMember[]
@@ -186,8 +189,10 @@ model Workspace {
   id              String            @id @default(cuid())
   name            String
   slug            String            @unique
+  deletedAt       DateTime?         // Soft delete - data de exclusão
   Profile         Profile[]
   WorkspaceMember WorkspaceMember[]
+  Destinatario    Destinatario[]
 }
 
 model WorkspaceMember {
@@ -196,6 +201,7 @@ model WorkspaceMember {
   userId      String
   role        String    @default("member") // "admin" ou "member"
   profileId   String? // Profile associado (apenas para members)
+  deletedAt   DateTime? // Soft delete - data de exclusão
   Profile     Profile?  @relation(fields: [profileId], references: [id])
   User        User      @relation(fields: [userId], references: [id])
   Workspace   Workspace @relation(fields: [workspaceId], references: [id])
@@ -209,6 +215,7 @@ model DivergenceSummary {
   totalErp  Int
   totalMl   Int
   diferenca Int
+  deletedAt DateTime?       // Soft delete - data de exclusão
   notes     DivergentNote[]
   profileId String? // Adiciona a referência ao Profile
   Profile   Profile?  @relation(fields: [profileId], references: [id]) // Adiciona a relação
@@ -220,4 +227,31 @@ model DivergentNote {
   nfKey              String            @unique
   status_conciliacao String
   summary            DivergenceSummary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
+}
+
+// Destinatários disponíveis para seleção nos cenários
+model Destinatario {
+  id          String    @id @default(cuid())
+  workspaceId String
+  tipo        String    // "PJ" ou "PF"
+  nomeFantasia String?
+  cnpj        String?
+  cpf         String?
+  ie          String?
+  xNome       String
+  xLgr        String
+  nro         String
+  xBairro     String
+  xMun        String
+  uf          String
+  cep         String
+  fone        String?
+  ativo       Boolean   @default(true)
+  deletedAt   DateTime? // Soft delete
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@index([tipo])
 }

@@ -39,6 +39,7 @@ export async function getWorkspaceMembers(): Promise<
   const members = await db.workspaceMember.findMany({
     where: {
       workspaceId: currentUser.workspaceId,
+      deletedAt: null, // Filtrar registros não deletados
     },
     include: {
       User: {
@@ -199,8 +200,10 @@ export async function removeMember(
       };
     }
 
-    await db.workspaceMember.delete({
+    // Soft delete - marca como deletado ao invés de remover permanentemente
+    await db.workspaceMember.update({
       where: { id: memberId },
+      data: { deletedAt: new Date() },
     });
 
     revalidatePath("/settings/users");

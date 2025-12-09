@@ -37,8 +37,10 @@ export default async function SettingsPage(props: {
   // 3. Busca profiles baseado nas permissões
   let profiles;
   if (permissions.canViewProfiles) {
-    // Admin vê todos os profiles
-    profiles = await db.profile.findMany();
+    // Admin vê todos os profiles não deletados
+    profiles = await db.profile.findMany({
+      where: { deletedAt: null },
+    });
   } else {
     // Member vê apenas seu profile
     if (!userProfileId) {
@@ -60,7 +62,10 @@ export default async function SettingsPage(props: {
     }
 
     const userProfile = await db.profile.findUnique({
-      where: { id: userProfileId },
+      where: {
+        id: userProfileId,
+        deletedAt: null,
+      },
     });
 
     profiles = userProfile ? [userProfile] : [];
@@ -76,10 +81,13 @@ export default async function SettingsPage(props: {
 
   const selectedProfile = profiles.find((p) => p.id === selectedProfileId);
 
-  // 6. Busca cenários do profile selecionado
+  // 6. Busca cenários do profile selecionado (não deletados)
   const scenarios = selectedProfileId
     ? await db.scenario.findMany({
-        where: { profileId: selectedProfileId },
+        where: {
+          profileId: selectedProfileId,
+          deletedAt: null,
+        },
         orderBy: { name: "asc" },
         include: {
           ScenarioEmitente: true,

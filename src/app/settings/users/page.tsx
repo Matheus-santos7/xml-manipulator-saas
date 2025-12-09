@@ -26,6 +26,7 @@ export default async function usersPage() {
   const profiles = await db.profile.findMany({
     where: {
       workspaceId: currentUser.workspaceId,
+      deletedAt: null, // Filtrar registros não deletados
     },
     select: {
       id: true,

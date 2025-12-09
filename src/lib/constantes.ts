@@ -511,7 +511,7 @@ export const DESTINATARIOS_DISPONIVEIS: DestinatarioDisponivel[] = [
   {
     tipo: "PF",
     nomeFantasia: "Pedro Souza",
-    CPF: "11122233396",
+    CPF: "82549307836",
     xNome: "PEDRO SOUZA",
     xLgr: "RUA DA CONSOLACAO",
     nro: "900",
@@ -758,9 +758,9 @@ export const DESTINATARIOS_DISPONIVEIS: DestinatarioDisponivel[] = [
   {
     tipo: "PF",
     nomeFantasia: "Cidadão de Santa Catarina",
-    CPF: "92470369185",
+    CPF: "77617034938",
     xNome: "CIDADAO DE TESTE DE SC",
-    xLgr: "RUA DA OSTRA",
+    xLgr: "RUA DA OSTRA", 
     nro: "2424",
     xBairro: "LAGOA DA CONCEIÇÃO",
     xMun: "Florianópolis",
@@ -771,7 +771,7 @@ export const DESTINATARIOS_DISPONIVEIS: DestinatarioDisponivel[] = [
   {
     tipo: "PF",
     nomeFantasia: "Cidadão de São Paulo",
-    CPF: "03581479620",
+    CPF: "82549307836",
     xNome: "CIDADAO DE TESTE DE SP",
     xLgr: "RUA DA GAROA",
     nro: "2525",

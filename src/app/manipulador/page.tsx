@@ -17,12 +17,16 @@ export default async function ManipuladorPage() {
   let scenarios;
 
   if (role === "admin") {
-    // Admin vê todos os cenários ativos do workspace
+    // Admin vê todos os cenários ativos do workspace (não deletados)
     scenarios = await db.scenario.findMany({
       where: {
         active: true,
+        deletedAt: null,
         Profile: {
-          workspaceId: workspaceId,
+          is: {
+            workspaceId: workspaceId,
+            deletedAt: null,
+          },
         },
       },
       select: {
@@ -43,7 +47,7 @@ export default async function ManipuladorPage() {
       name: `${s.Profile.name} - ${s.name}`,
     }));
   } else {
-    // Membro vê apenas cenários da sua empresa
+    // Membro vê apenas cenários da sua empresa (não deletados)
     if (!userProfileId) {
       return (
         <div className="container mx-auto py-8">
@@ -58,6 +62,7 @@ export default async function ManipuladorPage() {
     scenarios = await db.scenario.findMany({
       where: {
         active: true,
+        deletedAt: null,
         profileId: userProfileId,
       },
       select: { id: true, name: true },

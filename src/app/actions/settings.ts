@@ -212,7 +212,10 @@ export async function getProfileById(profileId: string) {
 
   try {
     const profile = await db.profile.findUnique({
-      where: { id: profileId },
+      where: {
+        id: profileId,
+        deletedAt: null, // Filtrar registros não deletados
+      },
     });
 
     return profile;
@@ -454,9 +457,10 @@ export async function deleteScenario(scenarioId: string) {
       };
     }
 
-    // As relações com onDelete: Cascade cuidam das tabelas filhas
-    await db.scenario.delete({
+    // Soft delete - marca como deletado ao invés de remover permanentemente
+    await db.scenario.update({
       where: { id: scenarioId },
+      data: { deletedAt: new Date() },
     });
 
     revalidatePath("/dashboard/settings");
@@ -478,14 +482,16 @@ export async function deleteProfile(profileId: string) {
   }
 
   try {
-    // Primeiro deletar todos os cenários da empresa (e suas relações em cascata)
-    await db.scenario.deleteMany({
+    // Soft delete dos cenários da empresa
+    await db.scenario.updateMany({
       where: { profileId },
+      data: { deletedAt: new Date() },
     });
 
-    // Depois deletar a empresa
-    await db.profile.delete({
+    // Soft delete da empresa
+    await db.profile.update({
       where: { id: profileId },
+      data: { deletedAt: new Date() },
     });
 
     revalidatePath("/dashboard/settings");

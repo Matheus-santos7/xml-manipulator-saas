@@ -28,7 +28,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     }
 
     const user = await db.user.findUnique({
-      where: { email: userEmail },
+      where: {
+        email: userEmail,
+        deletedAt: null, // Filtrar usuários não deletados
+      },
     });
 
     console.log("[auth-helper] user found:", user?.id, user?.email);
@@ -45,6 +48,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       },
       where: {
         userId: user.id,
+        deletedAt: null, // Filtrar membros não deletados
       },
     });
 

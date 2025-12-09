@@ -404,7 +404,8 @@ function editarChavesNFe(
 
     // 8. Atualiza Produtos nos itens <det> (REGEX)
     // Para VENDA/RETORNO/DEVOLUÇÃO: usa produto principal
-    // Para REMESSA: rotaciona entre produtos por ordem
+    // Para REMESSA SIMBÓLICA (com refNFe): usa produto principal
+    // Para REMESSA NORMAL (sem refNFe): rotaciona entre produtos por ordem
     if (produtos && produtos.length > 0) {
       // Extrai o CFOP do primeiro item para determinar o tipo de operação
       const det = findElement(infNFe, "det");
@@ -420,6 +421,14 @@ function editarChavesNFe(
 
       const isRemessa = REMESSAS_CFOP.includes(cfop);
 
+      // Verifica se é remessa simbólica (tem nota referenciada)
+      // Remessa simbólica possui <refNFe> dentro de <NFref>
+      const regexRefNFeCheck = /<refNFe>[^<]+<\/refNFe>/i;
+      const isRemessaSimbolicaOuRetorno = regexRefNFeCheck.test(xmlEditado);
+
+      // Remessa normal: é remessa E não tem nota referenciada
+      const isRemessaNormal = isRemessa && !isRemessaSimbolicaOuRetorno;
+
       // Regex para encontrar todos os blocos <det>
       const regexDet = /<det[^>]*>[\s\S]*?<\/det>/gi;
       const detBlocks = xmlEditado.match(regexDet);
@@ -429,11 +438,11 @@ function editarChavesNFe(
           let detBlockEditado = detBlock;
           let produtoSelecionado: DadosProduto | null = null;
 
-          if (isVendaRetornoOuDevolucao) {
-            // Para VENDA/RETORNO/DEVOLUÇÃO: usa o produto principal
+          if (isVendaRetornoOuDevolucao || isRemessaSimbolicaOuRetorno) {
+            // Para VENDA/RETORNO/DEVOLUÇÃO e REMESSA SIMBÓLICA: usa o produto principal
             produtoSelecionado = produtos.find((p) => p.isPrincipal) || null;
-          } else if (isRemessa) {
-            // Para REMESSA: rotaciona pelos produtos usando ordem
+          } else if (isRemessaNormal) {
+            // Para REMESSA NORMAL (sem refNFe): rotaciona pelos produtos usando ordem
             // index % produtos.length garante que sempre haverá um produto válido
             produtoSelecionado = produtos[index % produtos.length];
           }
@@ -464,9 +473,9 @@ function editarChavesNFe(
 
                   // Adiciona log apenas na primeira ocorrência
                   if (index === 0) {
-                    const tipoOp = isRemessa
+                    const tipoOp = isRemessaNormal
                       ? "Remessa (rotação)"
-                      : "Venda/Retorno/Devolução (principal)";
+                      : "Venda/Retorno/Devolução/Remessa Simbólica (principal)";
                     alteracoes.push(
                       `Produto ${tipoOp}: <${campo}> alterado para ${valor}`
                     );

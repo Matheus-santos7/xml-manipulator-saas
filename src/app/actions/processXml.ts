@@ -76,9 +76,12 @@ export async function processarArquivosXml(formData: FormData) {
     return { success: false, message: "Cenário ou arquivos faltando." };
   }
 
-  // Buscar o cenário completo com todas as relações
+  // Buscar o cenário completo com todas as relações (apenas não deletados)
   const scenario = await prisma.scenario.findUnique({
-    where: { id: scenarioId },
+    where: {
+      id: scenarioId,
+      deletedAt: null,
+    },
     include: {
       ScenarioEmitente: true,
       ScenarioDestinatario: true,
@@ -182,6 +185,10 @@ export async function processarArquivosXml(formData: FormData) {
   // Exibir dados adicionais se flags relacionadas estiverem ativas
   if (scenario.alterar_serie && scenario.nova_serie) {
     console.log(`   Nova Série: ${scenario.nova_serie}`);
+  } else {
+    console.log(
+      `   [DEBUG] alterar_serie: ${scenario.alterar_serie}, nova_serie: "${scenario.nova_serie}"`
+    );
   }
   if (scenario.alterar_cUF && scenario.novo_cUF) {
     console.log(`   Novo cUF: ${scenario.novo_cUF}`);
@@ -428,9 +435,9 @@ export async function processarArquivosXml(formData: FormData) {
     chaveMapping,
     referenceMap,
     chaveVendaNova,
-    scenario.nova_data || null,
-    scenario.novo_cUF || null,
-    scenario.nova_serie || null,
+    scenario.editar_data ? scenario.nova_data || null : null,
+    scenario.alterar_cUF ? scenario.novo_cUF || null : null,
+    scenario.alterar_serie ? scenario.nova_serie || null : null,
     novoEmitente,
     novoDestinatario,
     produtos,
