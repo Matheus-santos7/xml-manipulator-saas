@@ -93,6 +93,19 @@ export interface CstMappingData {
 }
 
 /**
+ * Dados para Reforma Tributária (IBS/CBS)
+ * Baseado no modelo Python: config_reforma_trib
+ */
+export interface TaxReformRuleData {
+  pIBSUF?: string | null; // Alíquota IBS UF (ex: "9.50")
+  pIBSMun?: string | null; // Alíquota IBS Municipal (ex: "3.50")
+  pCBS?: string | null; // Alíquota CBS (ex: "8.80")
+  vDevTrib?: string | null; // Valor de devolução tributária
+  cClassTrib?: string | null; // Código de classificação tributária
+  CST?: string | null; // CST do IBS/CBS
+}
+
+/**
  * Resultado da edição de um arquivo XML
  */
 export interface ResultadoEdicao {
@@ -102,6 +115,228 @@ export interface ResultadoEdicao {
   alteracoes: string[];
   conteudoEditado?: string;
   erro?: string;
+}
+
+/**
+ * Resultado do cálculo dos valores IBS/CBS por item
+ */
+interface ValoresIBSCBS {
+  vBC: string;
+  vIBSUF: string;
+  vIBSMun: string;
+  vCBS: string;
+  vDevTrib: string;
+}
+
+/**
+ * Formata um número para 2 casas decimais
+ */
+function formatDecimal(value: number): string {
+  return value.toFixed(2);
+}
+
+/**
+ * Converte string de porcentagem para número (ex: "9,50" ou "9.50" -> 9.50)
+ */
+function parsePercent(value: string | null | undefined): number {
+  if (!value) return 0;
+  return parseFloat(value.replace(",", ".")) || 0;
+}
+
+/**
+ * Cria o bloco XML <IBSCBS> para um item de produto
+ * Baseado na função _criar_bloco_ibscbs do Python
+ */
+function criarBlocoIBSCBS(
+  vProd: string,
+  taxRule: TaxReformRuleData
+): { xml: string; valores: ValoresIBSCBS } {
+  const vBC = parseFloat(vProd) || 0;
+  const pIBSUF = parsePercent(taxRule.pIBSUF);
+  const pIBSMun = parsePercent(taxRule.pIBSMun);
+  const pCBS = parsePercent(taxRule.pCBS);
+  const vDevTrib = parsePercent(taxRule.vDevTrib);
+
+  const vIBSUF = (vBC * pIBSUF) / 100;
+  const vIBSMun = (vBC * pIBSMun) / 100;
+  const vCBS = (vBC * pCBS) / 100;
+
+  const cst = taxRule.CST || "000";
+  const cClassTrib = taxRule.cClassTrib || "000001";
+
+  const xml =
+    `<IBSCBS>` +
+    `<CST>${cst}</CST>` +
+    `<cClassTrib>${cClassTrib}</cClassTrib>` +
+    `<gIBSCBS>` +
+    `<vBC>${formatDecimal(vBC)}</vBC>` +
+    `<gIBSUF>` +
+    `<pIBSUF>${formatDecimal(pIBSUF)}</pIBSUF>` +
+    `<gDevTrib><vDevTrib>${formatDecimal(vDevTrib)}</vDevTrib></gDevTrib>` +
+    `<vIBSUF>${formatDecimal(vIBSUF)}</vIBSUF>` +
+    `</gIBSUF>` +
+    `<gIBSMun>` +
+    `<pIBSMun>${formatDecimal(pIBSMun)}</pIBSMun>` +
+    `<gDevTrib><vDevTrib>0.00</vDevTrib></gDevTrib>` +
+    `<vIBSMun>${formatDecimal(vIBSMun)}</vIBSMun>` +
+    `</gIBSMun>` +
+    `<gCBS>` +
+    `<pCBS>${formatDecimal(pCBS)}</pCBS>` +
+    `<gDevTrib><vDevTrib>0.00</vDevTrib></gDevTrib>` +
+    `<vCBS>${formatDecimal(vCBS)}</vCBS>` +
+    `</gCBS>` +
+    `</gIBSCBS>` +
+    `</IBSCBS>`;
+
+  return {
+    xml,
+    valores: {
+      vBC: formatDecimal(vBC),
+      vIBSUF: formatDecimal(vIBSUF),
+      vIBSMun: formatDecimal(vIBSMun),
+      vCBS: formatDecimal(vCBS),
+      vDevTrib: formatDecimal(vDevTrib),
+    },
+  };
+}
+
+/**
+ * Cria o bloco XML <IBSCBSTot> para a totalização da nota
+ * Baseado na função _criar_bloco_ibscbs_tot do Python
+ */
+function criarBlocoIBSCBSTot(totais: {
+  vBC: number;
+  vIBSUF: number;
+  vIBSMun: number;
+  vCBS: number;
+  vDevTrib: number;
+}): string {
+  const vIBS = totais.vIBSUF + totais.vIBSMun;
+
+  return (
+    `<IBSCBSTot>` +
+    `<vBCIBSCBS>${formatDecimal(totais.vBC)}</vBCIBSCBS>` +
+    `<gIBS>` +
+    `<gIBSUF>` +
+    `<vDif>0.00</vDif>` +
+    `<vDevTrib>${formatDecimal(totais.vDevTrib)}</vDevTrib>` +
+    `<vIBSUF>${formatDecimal(totais.vIBSUF)}</vIBSUF>` +
+    `</gIBSUF>` +
+    `<gIBSMun>` +
+    `<vDif>0.00</vDif>` +
+    `<vDevTrib>0.00</vDevTrib>` +
+    `<vIBSMun>${formatDecimal(totais.vIBSMun)}</vIBSMun>` +
+    `</gIBSMun>` +
+    `<vIBS>${formatDecimal(vIBS)}</vIBS>` +
+    `<vCredPres>0.00</vCredPres>` +
+    `<vCredPresCondSus>0.00</vCredPresCondSus>` +
+    `</gIBS>` +
+    `<gCBS>` +
+    `<vDif>0.00</vDif>` +
+    `<vDevTrib>0.00</vDevTrib>` +
+    `<vCBS>${formatDecimal(totais.vCBS)}</vCBS>` +
+    `<vCredPres>0.00</vCredPres>` +
+    `<vCredPresCondSus>0.00</vCredPresCondSus>` +
+    `</gCBS>` +
+    `</IBSCBSTot>`
+  );
+}
+
+/**
+ * Aplica a Reforma Tributária (IBS/CBS) em um XML de NFe
+ * Adiciona blocos <IBSCBS> em cada item e <IBSCBSTot> nos totais
+ */
+function aplicarReformaTributaria(
+  xmlContent: string,
+  taxRule: TaxReformRuleData,
+  alteracoes: string[]
+): string {
+  let xmlEditado = xmlContent;
+
+  // Acumuladores para totalização
+  const totais = {
+    vBC: 0,
+    vIBSUF: 0,
+    vIBSMun: 0,
+    vCBS: 0,
+    vDevTrib: 0,
+  };
+
+  // 1. Processa cada item <det> e adiciona <IBSCBS> dentro de <imposto>
+  const regexDet = /<det[^>]*>([\s\S]*?)<\/det>/gi;
+  let match;
+  let itemCount = 0;
+
+  // Primeiro, coletamos todos os blocos <det> e seus valores
+  const detBlocks: Array<{ original: string; edited: string }> = [];
+
+  while ((match = regexDet.exec(xmlContent)) !== null) {
+    const detBlock = match[0];
+    let detBlockEditado = detBlock;
+
+    // Extrai o vProd do item
+    const vProdMatch = detBlock.match(/<vProd>([^<]+)<\/vProd>/i);
+    if (vProdMatch && vProdMatch[1]) {
+      const vProd = vProdMatch[1];
+
+      // Cria o bloco IBSCBS
+      const { xml: ibscbsXml, valores } = criarBlocoIBSCBS(vProd, taxRule);
+
+      // Acumula os totais
+      totais.vBC += parseFloat(valores.vBC);
+      totais.vIBSUF += parseFloat(valores.vIBSUF);
+      totais.vIBSMun += parseFloat(valores.vIBSMun);
+      totais.vCBS += parseFloat(valores.vCBS);
+      totais.vDevTrib += parseFloat(valores.vDevTrib);
+
+      // Remove bloco IBSCBS existente se houver
+      detBlockEditado = detBlockEditado.replace(
+        /<IBSCBS>[\s\S]*?<\/IBSCBS>/gi,
+        ""
+      );
+
+      // Insere o novo bloco IBSCBS antes de </imposto>
+      detBlockEditado = detBlockEditado.replace(
+        /(<\/imposto>)/i,
+        `${ibscbsXml}$1`
+      );
+
+      itemCount++;
+    }
+
+    detBlocks.push({ original: detBlock, edited: detBlockEditado });
+  }
+
+  // Aplica as substituições
+  for (const block of detBlocks) {
+    xmlEditado = xmlEditado.replace(block.original, block.edited);
+  }
+
+  if (itemCount > 0) {
+    alteracoes.push(
+      `Reforma Tributária: <IBSCBS> adicionado em ${itemCount} item(s)`
+    );
+  }
+
+  // 2. Adiciona ou atualiza <IBSCBSTot> dentro de <total>
+  const ibscbsTotXml = criarBlocoIBSCBSTot(totais);
+
+  // Remove bloco IBSCBSTot existente se houver
+  xmlEditado = xmlEditado.replace(/<IBSCBSTot>[\s\S]*?<\/IBSCBSTot>/gi, "");
+
+  // Insere o novo bloco IBSCBSTot antes de </total>
+  if (xmlEditado.includes("</total>")) {
+    xmlEditado = xmlEditado.replace(/(<\/total>)/i, `${ibscbsTotXml}$1`);
+    alteracoes.push(
+      `Reforma Tributária: <IBSCBSTot> adicionado (vBC: ${formatDecimal(
+        totais.vBC
+      )}, vIBS: ${formatDecimal(
+        totais.vIBSUF + totais.vIBSMun
+      )}, vCBS: ${formatDecimal(totais.vCBS)})`
+    );
+  }
+
+  return xmlEditado;
 }
 
 /**
@@ -156,7 +391,8 @@ function editarChavesNFe(
   produtos: Array<
     DadosProduto & { isPrincipal: boolean; ordem: number }
   > | null = null,
-  cstMappings: CstMappingData[] | null = null
+  cstMappings: CstMappingData[] | null = null,
+  taxReformRule: TaxReformRuleData | null = null
 ): ResultadoEdicao {
   const alteracoes: string[] = [];
   let xmlEditado = xmlContent;
@@ -645,6 +881,18 @@ function editarChavesNFe(
       }
     }
 
+    // 11. Aplica Reforma Tributária (IBS/CBS) se configurado
+    if (
+      taxReformRule &&
+      (taxReformRule.pIBSUF || taxReformRule.pIBSMun || taxReformRule.pCBS)
+    ) {
+      xmlEditado = aplicarReformaTributaria(
+        xmlEditado,
+        taxReformRule,
+        alteracoes
+      );
+    }
+
     if (alteracoes.length === 0) {
       return {
         nomeArquivo: fileName,
@@ -1115,7 +1363,8 @@ export function editarChavesXml(
   produtos: Array<
     DadosProduto & { isPrincipal: boolean; ordem: number }
   > | null = null,
-  cstMappings: CstMappingData[] | null = null
+  cstMappings: CstMappingData[] | null = null,
+  taxReformRule: TaxReformRuleData | null = null
 ): ResultadoEdicao {
   // Detecção rápida do tipo de documento
   if (xmlContent.includes("<procEventoNFe")) {
@@ -1148,7 +1397,8 @@ export function editarChavesXml(
       novoEmitente,
       novoDestinatario,
       produtos,
-      cstMappings
+      cstMappings,
+      taxReformRule
     );
   } else if (
     xmlContent.includes("<procInutNFe") ||
@@ -1189,7 +1439,8 @@ export function editarChavesEmLote(
   produtos: Array<
     DadosProduto & { isPrincipal: boolean; ordem: number }
   > | null = null,
-  cstMappings: CstMappingData[] | null = null
+  cstMappings: CstMappingData[] | null = null,
+  taxReformRule: TaxReformRuleData | null = null
 ): ResultadoEdicao[] {
   const resultados: ResultadoEdicao[] = [];
 
@@ -1206,7 +1457,8 @@ export function editarChavesEmLote(
       novoEmitente,
       novoDestinatario,
       produtos,
-      cstMappings
+      cstMappings,
+      taxReformRule
     );
     resultados.push(resultado);
   }

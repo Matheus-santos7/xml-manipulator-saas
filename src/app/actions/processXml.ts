@@ -430,6 +430,28 @@ export async function processarArquivosXml(formData: FormData) {
         }))
       : null;
 
+  // Prepara as regras de Reforma Tributária (IBS/CBS) se flag ativa
+  const taxReformRule =
+    scenario.reforma_tributaria &&
+    scenario.TaxReformRule &&
+    scenario.TaxReformRule.length > 0
+      ? {
+          pIBSUF: scenario.TaxReformRule[0].pIBSUF || undefined,
+          pIBSMun: scenario.TaxReformRule[0].pIBSMun || undefined,
+          pCBS: scenario.TaxReformRule[0].pCBS || undefined,
+          vDevTrib: scenario.TaxReformRule[0].vDevTrib || "0.00",
+          cClassTrib: scenario.TaxReformRule[0].cClassTrib || "000001",
+          CST: scenario.TaxReformRule[0].CST || "000",
+        }
+      : null;
+
+  if (taxReformRule) {
+    console.log(`\n   Reforma Tributária (IBS/CBS) configurada:`);
+    console.log(`      IBS UF: ${taxReformRule.pIBSUF || "0"}%`);
+    console.log(`      IBS Municipal: ${taxReformRule.pIBSMun || "0"}%`);
+    console.log(`      CBS: ${taxReformRule.pCBS || "0"}%`);
+  }
+
   const resultadosEdicao = editarChavesEmLote(
     filesForProcessing,
     chaveMapping,
@@ -441,7 +463,8 @@ export async function processarArquivosXml(formData: FormData) {
     novoEmitente,
     novoDestinatario,
     produtos,
-    cstMappings
+    cstMappings,
+    taxReformRule
   );
 
   // Exibe resumo da edição

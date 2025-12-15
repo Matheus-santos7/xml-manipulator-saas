@@ -74,6 +74,16 @@ const cstMappingSchema = z.object({
   cofins: z.string().optional(),
 });
 
+// Schema para regras de Reforma Tributária (IBS/CBS)
+const taxReformRuleSchema = z.object({
+  pIBSUF: z.string().optional(),
+  pIBSMun: z.string().optional(),
+  pCBS: z.string().optional(),
+  vDevTrib: z.string().optional(),
+  cClassTrib: z.string().optional(),
+  CST: z.string().optional(),
+});
+
 const emitenteSchema = z.object({
   cnpj: z.string().optional(),
   xNome: z.string().optional(),
@@ -156,6 +166,9 @@ const formSchema = z.object({
 
   // Mapeamentos CST
   cstMappings: z.array(cstMappingSchema).optional(),
+
+  // Reforma Tributária (IBS/CBS)
+  taxReformRule: taxReformRuleSchema.optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -352,6 +365,30 @@ export function ScenarioEditor({
             cofins: m.cofins ?? "",
           })
         ) ?? [],
+
+      // Tax Reform Rule (IBS/CBS)
+      taxReformRule: (() => {
+        const rules =
+          scenarioToEdit?.TaxReformRule || scenarioToEdit?.taxReformRules;
+        const rule = Array.isArray(rules) ? rules[0] : rules;
+        if (!rule)
+          return {
+            pIBSUF: "",
+            pIBSMun: "",
+            pCBS: "",
+            vDevTrib: "0.00",
+            cClassTrib: "000001",
+            CST: "000",
+          };
+        return {
+          pIBSUF: str(rule.pIBSUF),
+          pIBSMun: str(rule.pIBSMun),
+          pCBS: str(rule.pCBS),
+          vDevTrib: str(rule.vDevTrib) || "0.00",
+          cClassTrib: str(rule.cClassTrib) || "000001",
+          CST: str(rule.CST) || "000",
+        };
+      })(),
     };
   }, [profileId, scenarioToEdit, isDuplicating]); // Depende também do isDuplicating
 
@@ -392,6 +429,7 @@ export function ScenarioEditor({
   const watchEditarProdutos = form.watch("editar_produtos");
   const watchEditarImpostos = form.watch("editar_impostos");
   const watchEditarCst = form.watch("editar_cst");
+  const watchReformaTributaria = form.watch("reforma_tributaria");
 
   // Estados para loading das buscas
   const [loadingCep, setLoadingCep] = useState<
@@ -655,13 +693,14 @@ export function ScenarioEditor({
                 defaultValue="geral"
                 className="flex-1 flex flex-col overflow-hidden"
               >
-                <TabsList className="grid w-full grid-cols-6 gap-1">
+                <TabsList className="grid w-full grid-cols-7 gap-1">
                   <TabsTrigger value="geral">Geral</TabsTrigger>
                   <TabsTrigger value="emitente">Emitente</TabsTrigger>
                   <TabsTrigger value="destinatario">Destinatário</TabsTrigger>
                   <TabsTrigger value="produto">Produto</TabsTrigger>
                   <TabsTrigger value="impostos">Impostos</TabsTrigger>
                   <TabsTrigger value="cst">Mapeamento CST</TabsTrigger>
+                  <TabsTrigger value="reforma">Reforma Tributária</TabsTrigger>
                 </TabsList>
 
                 <div className="flex-1 overflow-y-auto pr-4 mt-4 max-h-[calc(90vh-220px)]">
@@ -2113,6 +2152,174 @@ export function ScenarioEditor({
                             </FormItem>
                           )}
                         />
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* ─────────────── ABA REFORMA TRIBUTÁRIA (IBS/CBS) ─────────────── */}
+                  <TabsContent value="reforma" className="space-y-4 mt-0">
+                    {!watchReformaTributaria && (
+                      <p className="text-sm text-muted-foreground p-4 border rounded-lg">
+                        Ative a opção &quot;Reforma Tributária&quot; na aba
+                        Geral para configurar os parâmetros IBS/CBS.
+                      </p>
+                    )}
+
+                    {watchReformaTributaria && (
+                      <div className="space-y-6">
+                        <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
+                          <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                            Reforma Tributária - IBS e CBS
+                          </h4>
+                          <p className="text-sm text-blue-600 dark:text-blue-400">
+                            Configure as alíquotas do IBS (Imposto sobre Bens e
+                            Serviços) e CBS (Contribuição sobre Bens e Serviços)
+                            que serão adicionados aos XMLs processados.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="taxReformRule.CST"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>CST IBS/CBS</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="000"
+                                    maxLength={3}
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground">
+                                  Código de Situação Tributária do IBS/CBS
+                                </p>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="taxReformRule.cClassTrib"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Classificação Tributária</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="000001"
+                                    maxLength={6}
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <p className="text-xs text-muted-foreground">
+                                  Código da classificação tributária
+                                </p>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="border rounded-lg p-4 space-y-4">
+                          <h5 className="font-medium">
+                            Alíquotas IBS (Estadual e Municipal)
+                          </h5>
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="taxReformRule.pIBSUF"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Alíquota IBS UF (%)</FormLabel>
+                                  <FormControl>
+                                    <MaskedInput
+                                      mask="percent"
+                                      placeholder="9,50"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <p className="text-xs text-muted-foreground">
+                                    Percentual do IBS destinado à UF
+                                  </p>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="taxReformRule.pIBSMun"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>
+                                    Alíquota IBS Municipal (%)
+                                  </FormLabel>
+                                  <FormControl>
+                                    <MaskedInput
+                                      mask="percent"
+                                      placeholder="3,50"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <p className="text-xs text-muted-foreground">
+                                    Percentual do IBS destinado ao Município
+                                  </p>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="border rounded-lg p-4 space-y-4">
+                          <h5 className="font-medium">
+                            Alíquota CBS (Federal)
+                          </h5>
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="taxReformRule.pCBS"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Alíquota CBS (%)</FormLabel>
+                                  <FormControl>
+                                    <MaskedInput
+                                      mask="percent"
+                                      placeholder="8,80"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <p className="text-xs text-muted-foreground">
+                                    Contribuição sobre Bens e Serviços (Federal)
+                                  </p>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="taxReformRule.vDevTrib"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>
+                                    Devolução Tributária (R$)
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="0.00" {...field} />
+                                  </FormControl>
+                                  <p className="text-xs text-muted-foreground">
+                                    Valor de devolução tributária (cashback)
+                                  </p>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="p-4 border rounded-lg bg-amber-50 dark:bg-amber-950">
+                          <p className="text-sm text-amber-700 dark:text-amber-300">
+                            <strong>Nota:</strong> Os valores serão calculados
+                            automaticamente com base no vProd (valor do produto)
+                            de cada item da nota fiscal. Os blocos
+                            &lt;IBSCBS&gt; e &lt;IBSCBSTot&gt; serão adicionados
+                            ao XML.
+                          </p>
+                        </div>
                       </div>
                     )}
                   </TabsContent>

@@ -241,6 +241,14 @@ export type SaveScenarioInput = z.infer<typeof scenarioSchema> & {
     pis?: string;
     cofins?: string;
   }>;
+  taxReformRule?: {
+    pIBSUF?: string;
+    pIBSMun?: string;
+    pCBS?: string;
+    vDevTrib?: string;
+    cClassTrib?: string;
+    CST?: string;
+  };
 };
 
 export async function saveScenario(data: SaveScenarioInput) {
@@ -412,6 +420,32 @@ export async function saveScenario(data: SaveScenarioInput) {
     if (toCreate.length > 0) {
       await db.cstMapping.createMany({ data: toCreate });
     }
+  }
+
+  // Persistir TaxReformRule (regras de Reforma Tributária IBS/CBS)
+  if (data.taxReformRule && payload.reforma_tributaria) {
+    const taxRule = data.taxReformRule;
+    // Remove regras antigas e cria nova (apenas 1 regra por cenário)
+    await db.taxReformRule.deleteMany({ where: { scenarioId } });
+
+    // Só cria se houver pelo menos uma alíquota preenchida
+    const hasValues = taxRule.pIBSUF || taxRule.pIBSMun || taxRule.pCBS;
+    if (hasValues) {
+      await db.taxReformRule.create({
+        data: {
+          scenarioId,
+          pIBSUF: taxRule.pIBSUF || null,
+          pIBSMun: taxRule.pIBSMun || null,
+          pCBS: taxRule.pCBS || null,
+          vDevTrib: taxRule.vDevTrib || "0.00",
+          cClassTrib: taxRule.cClassTrib || "000001",
+          CST: taxRule.CST || "000",
+        },
+      });
+    }
+  } else if (!payload.reforma_tributaria) {
+    // Se a flag foi desativada, remove as regras existentes
+    await db.taxReformRule.deleteMany({ where: { scenarioId } });
   }
 
   revalidatePath("/dashboard/settings");

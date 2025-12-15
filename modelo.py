@@ -103,35 +103,15 @@ def carregar_constantes(caminho_arquivo='constantes.json'):
 
 # Pergunta ao usuário qual empresa deseja manipular
 def selecionar_empresa(constantes):
-    """Pergunta ao usuário qual empresa deseja manipular, ignorando chaves de configuração."""
-    chaves_ignoradas = {'destinatarios_disponiveis'}
-    empresas = [key for key in constantes.keys() if key not in chaves_ignoradas]
-    
-    if not empresas:
-        print("Nenhuma empresa configurada encontrada no arquivo de constantes.")
-        return None
-
+    empresas = list(constantes.keys())
     print("Empresas disponíveis:")
     for idx, nome in enumerate(empresas, 1):
         print(f"  {idx}. {nome}")
-    
     while True:
-        escolha = input("Digite o nome ou número da empresa desejada: ").strip()
-        try:
-            # Tenta converter para número
-            idx_escolha = int(escolha) - 1
-            if 0 <= idx_escolha < len(empresas):
-                nome_empresa = empresas[idx_escolha]
-                print(f"Empresa selecionada: {nome_empresa}")
-                return constantes[nome_empresa]
-        except ValueError:
-            # Se não for número, trata como nome
-            nome_empresa_upper = escolha.upper()
-            if nome_empresa_upper in empresas:
-                print(f"Empresa selecionada: {nome_empresa_upper}")
-                return constantes[nome_empresa_upper]
-        
-        print("Seleção inválida. Tente novamente.")
+        escolha = input("Digite o nome da empresa desejada: ").strip().upper()
+        if escolha in empresas:
+            return constantes[escolha]
+        print("Empresa não encontrada. Tente novamente.")
 
 
 def get_main_info_block(root):
@@ -217,56 +197,6 @@ def _get_chave_info_for_mapping(file_path):
         return None
     except Exception:
         return None
-
-def selecionar_destinatario(constantes):
-    """Permite ao usuário selecionar um destinatário da lista de disponíveis."""
-    destinatarios = constantes.get('destinatarios_disponiveis', [])
-    if not destinatarios:
-        print("Nenhum destinatário disponível no arquivo de constantes.")
-        return None
-
-    print("\nSelecione o destinatário para a manipulação:")
-    for idx, dest in enumerate(destinatarios, 1):
-        print(f"  {idx}. {dest.get('nome_fantasia', dest.get('xNome', ''))} ({dest.get('tipo', '')})")
-
-    while True:
-        try:
-            escolha = input(f"Digite o número do destinatário (1-{len(destinatarios)}): ").strip()
-            if not escolha: return None # Permite pular a seleção
-            
-            idx_escolhido = int(escolha) - 1
-            if 0 <= idx_escolhido < len(destinatarios):
-                return destinatarios[idx_escolhido]
-            else:
-                print("Número inválido. Tente novamente.")
-        except ValueError:
-            print("Entrada inválida. Por favor, digite um número.")
-
-
-def selecionar_produto(constantes_empresa):
-    """Permite ao usuário selecionar um produto da lista de disponíveis."""
-    produtos = constantes_empresa.get('produtos_disponiveis', [])
-    if not produtos:
-        print("Nenhum produto disponível no arquivo de constantes.")
-        return None
-
-    print("\nSelecione o produto para a manipulação (para notas de Venda/Retorno):")
-    for idx, prod in enumerate(produtos, 1):
-        print(f"  {idx}. {prod.get('xProd', 'Produto sem nome')}")
-
-    while True:
-        try:
-            escolha = input(f"Digite o número do produto (1-{len(produtos)}) ou Enter para pular: ").strip()
-            if not escolha: return None # Permite pular a seleção
-            
-            idx_escolhido = int(escolha) - 1
-            if 0 <= idx_escolhido < len(produtos):
-                return produtos[idx_escolhido]
-            else:
-                print("Número inválido. Tente novamente.")
-        except ValueError:
-            print("Entrada inválida. Por favor, digite um número.")
-
 
 # Extrai informações relevantes de um XML de NFe para renomeação e manipulação
 def get_xml_info(file_path):
@@ -439,7 +369,7 @@ def _resumir_renomeacao(total_renomeados, total_puladas, total_erros):
     print("====================================================================\n")
 
 
-def editar_arquivos(folder_path, constantes_empresa, constantes_gerais):
+def editar_arquivos(folder_path, constantes_empresa):
     print("\n========== ETAPA 2: MANIPULAÇÃO E EDIÇÃO DOS ARQUIVOS ==========")
     arquivos = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith('.xml')]
     if not arquivos:
@@ -456,34 +386,16 @@ def editar_arquivos(folder_path, constantes_empresa, constantes_gerais):
     alterar_data = cfg.get('data', False)
     alterar_ref_nfe = cfg.get('refNFe', False)
     alterar_cst = cfg.get('cst', False)
-    
-    # --- LÓGICA DE SELEÇÃO DO DESTINATÁRIO ---
     alterar_destinatario = cfg.get('destinatario', False)
-    novo_destinatario = None
-    if alterar_destinatario:
-        novo_destinatario = selecionar_destinatario(constantes_gerais) # Passa o JSON geral
-        if novo_destinatario is None:
-            print("Nenhum destinatário selecionado. A alteração do destinatário será ignorada.")
-            alterar_destinatario = False
-    # --- FIM DA LÓGICA ---
-
-    # --- LÓGICA DE SELEÇÃO DO PRODUTO ---
-    produto_selecionado = None
-    if alterar_produtos:
-        produto_selecionado = selecionar_produto(constantes_empresa)
-        if produto_selecionado is None:
-            print("Nenhum produto selecionado para Venda/Retorno. A alteração seguirá a lógica padrão.")
-    # --- FIM DA LÓGICA ---
-
     zerar_ipi_remessa_retorno = cfg.get('zerar_ipi_remessa_retorno', False)
     zerar_ipi_venda = cfg.get('zerar_ipi_venda', False)
     alterar_reforma_tributaria = cfg.get('reforma_tributaria', False)
     alterar_serie = cfg.get('serie', False)
     alterar_cUF = cfg.get('cUF', False)
-    alterar_cfop_venda = cfg.get('cfop_venda', False)
 
     novo_emitente = constantes_empresa.get('emitente')
-    produtos_disponiveis = constantes_empresa.get('produtos_disponiveis')
+    novo_destinatario = constantes_empresa.get('destinatario')
+    novo_produto = constantes_empresa.get('produto')
     novos_impostos = constantes_empresa.get('impostos')
     nova_data_str = constantes_empresa.get('data', {}).get('nova_data')
     mapeamento_cst = constantes_empresa.get('mapeamento_cst', {})
@@ -491,7 +403,7 @@ def editar_arquivos(folder_path, constantes_empresa, constantes_gerais):
     novos_dados_ide = constantes_empresa.get('reforma_tributaria', {}).get('identificacao') or constantes_empresa.get('identificacao', {})
     
     # --- PREPARAÇÃO DE MAPAS DE CHAVES (INCLUINDO CT-E) ---
-    chave_mapping, reference_map, chave_da_venda_nova, produtos_por_chave = _prepara_mapeamentos(
+    chave_mapping, reference_map, chave_da_venda_nova = _prepara_mapeamentos(
         arquivos, alterar_emitente, alterar_data, novo_emitente, nova_data_str,
         alterar_cUF, alterar_serie, novos_dados_ide 
     )
@@ -540,9 +452,7 @@ def editar_arquivos(folder_path, constantes_empresa, constantes_gerais):
                     alterar_data=alterar_data,
                     nova_data_str=nova_data_str,
                     alterar_cUF=alterar_cUF,
-                    novo_cUF_val=novos_dados_ide.get('novo_cUF'),
-                    alterar_destinatario=alterar_destinatario,
-                    novo_destinatario=novo_destinatario
+                    novo_cUF_val=novos_dados_ide.get('novo_cUF')
                 )
             elif 'procEventoNFe' in root.tag:
                 alteracoes = _editar_cancelamento(root, chave_mapping, alterar_data, nova_data_str)
@@ -555,14 +465,13 @@ def editar_arquivos(folder_path, constantes_empresa, constantes_gerais):
                 continue
             else:
                 msg, alteracoes = _editar_nfe(
-                    root, alterar_emitente, novo_emitente, alterar_produtos, produtos_disponiveis, produto_selecionado,
+                    root, alterar_emitente, novo_emitente, alterar_produtos, novo_produto,
                     alterar_impostos, novos_impostos, alterar_cst, mapeamento_cst,
                     zerar_ipi_remessa_retorno, zerar_ipi_venda, alterar_data, nova_data_str,
-                    chave_mapping, alterar_ref_nfe, reference_map, produtos_por_chave,
+                    chave_mapping, alterar_ref_nfe, reference_map,
                     alterar_destinatario, novo_destinatario,
                     alterar_reforma_tributaria, config_reforma_trib,
-                    alterar_serie, alterar_cUF, novos_dados_ide,
-                    alterar_cfop_venda
+                    alterar_serie, alterar_cUF, novos_dados_ide
                 )
 
             if alteracoes:
@@ -581,29 +490,30 @@ def editar_arquivos(folder_path, constantes_empresa, constantes_gerais):
     print("====================================================================\n")
 
 # --- FUNÇÃO AUXILIAR ---
-def _atualizar_bloco_endereco(parent, tag_name, data, alteracoes, log_prefix, ender_tag_name=None):
-    """Atualiza um bloco de dados existente (ex: <dest>, <retirada>) no XML. Não cria novas tags."""
+def _criar_ou_atualizar_bloco_endereco(parent, tag_name, data, alteracoes, log_prefix, ender_tag_name=None):
+    """Cria ou atualiza um bloco de dados (ex: <dest>, <retirada>) no XML."""
     bloco = find_element(parent, tag_name)
     if bloco is None:
-        return  # Se o bloco principal (dest, retirada) não existe, não faz nada.
+        bloco = ET.SubElement(parent, tag_name)
     
-    ender_container = find_element(bloco, ender_tag_name) if ender_tag_name else bloco
-    if ender_container is None:
-        return # Se o container de endereço (enderDest, enderEmit) não existe, não faz nada.
+    if ender_tag_name:
+        ender_container = find_element(bloco, ender_tag_name)
+        if ender_container is None:
+            ender_container = ET.SubElement(bloco, ender_tag_name)
+    else:
+        ender_container = bloco
 
     campos_endereco = ['xLgr', 'nro', 'xCpl', 'xBairro', 'cMun', 'xMun', 'UF', 'CEP', 'cPais', 'xPais', 'fone']
     
     for campo, valor in data.items():
-        # Ignora campos que não são de endereço se não estiverem no bloco principal
-        if campo in campos_endereco:
-            target_element = ender_container
-        else:
-            target_element = bloco
-
+        target_element = ender_container if campo in campos_endereco else bloco
+        
         tag = find_element(target_element, campo)
-        if tag is not None:  # Apenas atualiza se a tag já existir
-            tag.text = str(valor)
-            alteracoes.append(f"{log_prefix}: <{campo}> alterado")
+        if tag is None:
+            tag = ET.SubElement(target_element, campo)
+        
+        tag.text = str(valor)
+        alteracoes.append(f"{log_prefix}: <{campo}> alterado")
 
 # --- FUNÇÕES AUXILIARES PARA REFORMA TRIBUTÁRIA ---
 
@@ -707,7 +617,6 @@ def _prepara_mapeamentos(arquivos, alterar_emitente, alterar_data, novo_emitente
                          alterar_cUF, alterar_serie, novos_dados_ide):
     chave_mapping, reference_map = {}, {}
     chave_da_venda_nova = None
-    produtos_por_chave = {}
 
     # Busca informações de todos os tipos de documentos (NF-e, CT-e, Inutilização)
     all_doc_infos = []
@@ -774,7 +683,7 @@ def _prepara_mapeamentos(arquivos, alterar_emitente, alterar_data, novo_emitente
             if doc_type == 'NFe' and "Venda.xml" in info['caminho_completo']:
                 chave_da_venda_nova = nova_chave_com_dv
     
-    return chave_mapping, reference_map, chave_da_venda_nova, produtos_por_chave
+    return chave_mapping, reference_map, chave_da_venda_nova
 
 
 def _editar_inutilizacao(root, alterar_emitente, novo_emitente, alterar_data, nova_data_str,
@@ -838,11 +747,8 @@ def _editar_inutilizacao(root, alterar_emitente, novo_emitente, alterar_data, no
     return msg, alteracoes
 
 
-def _editar_cte(root, file_path, chave_mapping, chave_da_venda_nova=None, 
-                alterar_remetente=False, novo_remetente=None, 
-                alterar_data=False, nova_data_str=None,
-                alterar_cUF=False, novo_cUF_val=None,
-                alterar_destinatario=False, novo_destinatario=None):
+def _editar_cte(root, file_path, chave_mapping, chave_da_venda_nova=None, alterar_remetente=False, novo_remetente=None, alterar_data=False, nova_data_str=None,
+                alterar_cUF=False, novo_cUF_val=None):
     alteracoes, msg = [], f"CTe: {os.path.basename(file_path)}"
     inf_cte = find_element_deep(root, 'infCte')
     if inf_cte is None: return msg, alteracoes
@@ -881,9 +787,8 @@ def _editar_cte(root, file_path, chave_mapping, chave_da_venda_nova=None,
         if chave_tag is not None:
             # Tenta atualizar pela chave mapeada (venda)
             if chave_tag.text in chave_mapping:
-                 nova_chave_nfe = chave_mapping[chave_tag.text]
-                 chave_tag.text = nova_chave_nfe
-                 alteracoes.append(f"Referência de NFe <chave> atualizada para: {nova_chave_nfe}")
+                 chave_tag.text = chave_mapping[chave_tag.text]
+                 alteracoes.append(f"Referência de NFe <chave> atualizada para: {chave_mapping[chave_tag.text]}")
                  alterou = True
             # Se não, tenta forçar pela chave da venda (se existir)
             elif chave_da_venda_nova is not None and chave_tag.text != chave_da_venda_nova:
@@ -893,12 +798,6 @@ def _editar_cte(root, file_path, chave_mapping, chave_da_venda_nova=None,
             elif chave_da_venda_nova is None and not (chave_tag.text in chave_mapping):
                  alteracoes.append("[AVISO] Nova chave da nota de venda não foi encontrada para referenciar no CT-e.")
 
-
-    # --- LÓGICA DE ALTERAÇÃO DO DESTINATÁRIO (APENAS PARA CTE) ---
-    if alterar_destinatario and novo_destinatario:
-        _atualizar_bloco_endereco(inf_cte, 'dest', novo_destinatario, alteracoes, "Destinatário (CTe)", ender_tag_name='enderDest')
-        alterou = True
-    # --- FIM DA LÓGICA ---
 
     if alterar_remetente is True and novo_remetente is not None:
         rem = find_element(inf_cte, 'rem')
@@ -973,14 +872,13 @@ def _editar_cancelamento(root, chave_mapping, alterar_data=False, nova_data_str=
     return alteracoes
 
 def _editar_nfe(
-    root, alterar_emitente, novo_emitente, alterar_produtos, produtos_disponiveis, produto_selecionado,
+    root, alterar_emitente, novo_emitente, alterar_produtos, novo_produto,
     alterar_impostos, novos_impostos, alterar_cst, mapeamento_cst,
     zerar_ipi_remessa_retorno, zerar_ipi_venda, alterar_data, nova_data_str,
-    chave_mapping, alterar_ref_nfe, reference_map, produtos_por_chave,
+    chave_mapping, alterar_ref_nfe, reference_map,
     alterar_destinatario, novo_destinatario,
     alterar_reforma_tributaria, config_reforma_trib,
-    alterar_serie, alterar_cUF, novos_dados_ide,
-    alterar_cfop_venda
+    alterar_serie, alterar_cUF, novos_dados_ide
 ):
     alteracoes = []
     inf_nfe = find_element_deep(root, 'infNFe')
@@ -1015,33 +913,13 @@ def _editar_nfe(
                         tag.text = valor
                         alteracoes.append(f"Emitente: <{campo}> alterado")
 
-    # --- LÓGICA DE ALTERAÇÃO DE CFOP (ESTADUAL/INTERESTADUAL) ---
-    if alterar_cfop_venda and novo_destinatario:
-        emit_tag = find_element(inf_nfe, 'emit')
-        ender_emit_tag = find_element(emit_tag, 'enderEmit') if emit_tag else None
-        uf_emitente = find_element(ender_emit_tag, 'UF').text if ender_emit_tag and find_element(ender_emit_tag, 'UF') is not None else None
-        
-        uf_destinatario = novo_destinatario.get('UF')
-
-        if uf_emitente and uf_destinatario:
-            is_interestadual = uf_emitente != uf_destinatario
-            
-            for det in find_all_elements(inf_nfe, 'det'):
-                prod = find_element(det, 'prod')
-                cfop_tag = find_element(prod, 'CFOP')
-                if cfop_tag is not None and cfop_tag.text in VENDAS_CFOP:
-                    novo_cfop = '6102' if is_interestadual else '5102'
-                    if cfop_tag.text != novo_cfop:
-                        cfop_tag.text = novo_cfop
-                        alteracoes.append(f"CFOP de venda alterado para {novo_cfop} (UF Emit: {uf_emitente}, UF Dest: {uf_destinatario})")
-    # --- FIM DA LÓGICA ---
-
     cfop_geral = find_element_deep(inf_nfe, 'det/prod/CFOP')
     if alterar_destinatario is True and novo_destinatario is not None and cfop_geral is not None:
         cfop = cfop_geral.text
-        if cfop in VENDAS_CFOP + DEVOLUCOES_CFOP:
-            _atualizar_bloco_endereco(inf_nfe, 'dest', novo_destinatario, alteracoes, "Destinatário", ender_tag_name='enderDest')
-
+        if cfop in VENDAS_CFOP:
+            _criar_ou_atualizar_bloco_endereco(ide, 'retirada', novo_destinatario, alteracoes, "Retirada")
+        elif cfop in REMESSAS_CFOP or cfop in RETORNOS_CFOP:
+            _criar_ou_atualizar_bloco_endereco(inf_nfe, 'dest', novo_destinatario, alteracoes, "Destinatário", ender_tag_name='enderDest')
 
     total_vBC_IBSCBS = Decimal('0.00')
     total_vIBSUF = Decimal('0.00')
@@ -1049,41 +927,14 @@ def _editar_nfe(
     total_vCBS = Decimal('0.00')
     total_vDevTrib = Decimal('0.00')
 
-    # --- LÓGICA DE ALTERAÇÃO DE PRODUTOS (REMESSA vs VENDA/RETORNO) ---
-    if alterar_produtos and produtos_disponiveis:
-        cfop_geral_tag = find_element_deep(inf_nfe, 'det/prod/CFOP')
-        cfop_geral = cfop_geral_tag.text if cfop_geral_tag is not None else ''
-
-        # Lógica para Remessa (rotação de produtos)
-        if cfop_geral in REMESSAS_CFOP:
-            todos_det = find_all_elements(inf_nfe, 'det')
-            num_produtos_disponiveis = len(produtos_disponiveis)
-            for i, det in enumerate(todos_det):
-                prod_tag = find_element(det, 'prod')
-                if prod_tag is not None:
-                    produto_a_usar = produtos_disponiveis[i % num_produtos_disponiveis]
-                    for campo, valor in produto_a_usar.items():
-                        tag = find_element(prod_tag, campo)
-                        if tag is not None:
-                            tag.text = valor
-                            alteracoes.append(f"Produto (Remessa): Item {i+1} <{campo}> alterado para '{valor}'")
-        
-        # Lógica para Venda, Retorno e Devolução (produto selecionado)
-        elif cfop_geral in VENDAS_CFOP + RETORNOS_CFOP + DEVOLUCOES_CFOP:
-            if produto_selecionado:
-                for det in find_all_elements(inf_nfe, 'det'):
-                    prod_tag = find_element(det, 'prod')
-                    if prod_tag is not None:
-                        for campo, valor in produto_selecionado.items():
-                            tag = find_element(prod_tag, campo)
-                            if tag is not None:
-                                tag.text = valor
-                                alteracoes.append(f"Produto (Venda/Retorno/Devolução): <{campo}> alterado para '{valor}'")
-    # --- FIM DA LÓGICA DE PRODUTOS ---
-
-
     for det in find_all_elements(inf_nfe, 'det'):
         prod, imposto = find_element(det, 'prod'), find_element(det, 'imposto')
+        if alterar_produtos is True and novo_produto is not None and prod is not None:
+            for campo, valor in novo_produto.items():
+                tag = find_element(prod, campo)
+                if tag is not None:
+                    tag.text = valor
+                    alteracoes.append(f"Produto: <{campo}> alterado")
         if imposto is None: continue
 
         if alterar_impostos is True and novos_impostos is not None:
@@ -1252,13 +1103,9 @@ def _salvar_xml(root, file_path):
 # --- Loop Principal do Programa ---
 if __name__ == "__main__":
     print("\n==================== INICIANDO GERENCIADOR DE XMLs ====================\n")
-    constantes_gerais = carregar_constantes('constantes.json')
-    if constantes_gerais is not None:
-        constantes_empresa = selecionar_empresa(constantes_gerais)
-        if constantes_empresa is None:
-            print("Nenhuma empresa foi selecionada. Encerrando o programa.")
-            exit()
-
+    constantes = carregar_constantes('constantes.json')
+    if constantes is not None:
+        constantes_empresa = selecionar_empresa(constantes)
         configs = constantes_empresa.get('configuracao_execucao', {})
         caminhos = constantes_empresa.get('caminhos', {})
         run_rename = configs.get('processar_e_renomear', False)
@@ -1275,7 +1122,21 @@ if __name__ == "__main__":
         if run_edit is True:
             if pasta_edicao is not None and os.path.isdir(pasta_edicao):
                 print(f"Pasta de edição selecionada: {pasta_edicao}")
-                editar_arquivos(pasta_edicao, constantes_empresa, constantes_gerais)
+                
+                # Pega o CNPJ do primeiro arquivo para usar como padrão se não for alterado
+                cnpj_orig = ''
+                arquivos_edicao = [os.path.join(pasta_edicao, f) for f in os.listdir(pasta_edicao) if f.endswith('.xml')]
+                if arquivos_edicao:
+                    for f in arquivos_edicao:
+                        try:
+                            info = _get_chave_info_for_mapping(f)
+                            if info is not None and info.get('emit_cnpj'):
+                                cnpj_orig = info['emit_cnpj']
+                                break
+                        except Exception:
+                            pass
+                
+                editar_arquivos(pasta_edicao, constantes_empresa)
             else:
                 print(f"Erro: Caminho da 'pasta_edicao' ('{pasta_edicao}') é inválido ou não definido.")
             
