@@ -15,6 +15,8 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 // Definimos o tipo como uma Promise (Next.js 15+)
 type SearchParams = Promise<{ profileId?: string }>;
 

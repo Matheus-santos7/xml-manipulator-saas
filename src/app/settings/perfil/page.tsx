@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-helper";
-import { getUserProfile } from "@/app/actions/profile";
+import { getUserProfile } from "@/app/actions/user-account";
 import { ProfileEditForm } from "@/components/settings/profile-user-form";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 
 export default async function PerfilPage() {
   const currentUser = await getCurrentUser();

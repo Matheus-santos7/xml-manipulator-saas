@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
-const AUTH_COOKIE = "xml-saas-user";
+import { AUTH_COOKIE } from "@/lib/auth-constants";
 
 // Rotas públicas que não precisam de autenticação
 const publicRoutes = ["/login"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Verifica se é rota pública

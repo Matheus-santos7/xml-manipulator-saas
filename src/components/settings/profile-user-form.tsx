@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { updateUserProfile } from "@/app/actions/profile";
+import { updateUserProfile } from "@/app/actions/user-account";
 import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 interface ProfileEditFormProps {

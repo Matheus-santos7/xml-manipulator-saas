@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth-helper";
 import { redirect } from "next/navigation";
 import XmlProcessorClient from "@/components/xml-manipulator/processor-client";
 
+export const dynamic = "force-dynamic";
+
 export default async function ManipuladorPage() {
   // Verificar autenticação
   const currentUser = await getCurrentUser();
@@ -70,10 +72,16 @@ export default async function ManipuladorPage() {
     });
   }
 
+  const isAdmin = role === "admin";
+
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+        <h1
+          className={`text-3xl font-bold ${
+            isAdmin ? "text-role-admin" : "text-role-member"
+          }`}
+        >
           Manipulador XML
         </h1>
         <p className="text-muted-foreground mt-2">

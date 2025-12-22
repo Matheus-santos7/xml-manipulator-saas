@@ -3,11 +3,13 @@
 import { db } from "@/app/lib/db";
 import { getCurrentUser } from "@/lib/auth-helper";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
+import { revokeAllUserSessions, createSession } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
-const AUTH_COOKIE = "xml-saas-user";
-
+/**
+ * Busca os dados básicos do usuário atualmente autenticado (nome, email e indicação de senha).
+ */
 export async function getUserProfile() {
   const currentUser = await getCurrentUser();
 
@@ -116,15 +118,19 @@ export async function updateUserProfile(data: UpdateProfileData) {
 
     await db.user.update({ where: { id: user.id }, data: updateData });
 
-    // Se mudou o email, atualizar cookie de sessão
-    if (updateData.email) {
-      const cookieStore = await cookies();
-      cookieStore.set(AUTH_COOKIE, updateData.email, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7,
+    // Se mudou a senha, revogar todas as sessões antigas por segurança
+    if (updateData.password) {
+      await revokeAllUserSessions(user.id);
+      // Criar nova sessão para o usuário atual
+      await createSession(user.id);
+      logger.info("Password changed, all sessions revoked", {
+        userId: user.id,
       });
+    }
+
+    // Se mudou o email, criar nova sessão
+    if (updateData.email && !updateData.password) {
+      await createSession(user.id);
     }
 
     // Revalidar páginas importantes
@@ -132,9 +138,17 @@ export async function updateUserProfile(data: UpdateProfileData) {
     revalidatePath("/manipulador");
     revalidatePath("/settings");
 
+    logger.info("User profile updated", {
+      userId: user.id,
+      changedFields: Object.keys(updateData),
+    });
+
     return { success: true };
   } catch (error) {
-    console.error("Erro ao atualizar perfil:", error);
+    logger.error("Failed to update user profile", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return { success: false, error: "Erro ao atualizar perfil." };
   }
 }
@@ -145,6 +159,7 @@ export async function updateCurrentUser(
   currentPassword?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Atualiza email e/ou senha do usuário autenticado, reaproveitando as mesmas validações de updateUserProfile.
     const currentUser = await getCurrentUser();
 
     if (!currentUser) {
@@ -203,15 +218,19 @@ export async function updateCurrentUser(
 
     await db.user.update({ where: { id: user.id }, data });
 
-    // Se mudou o email, atualizar cookie de sessão
-    if (data.email) {
-      const cookieStore = await cookies();
-      cookieStore.set(AUTH_COOKIE, data.email, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7,
+    // Se mudou a senha, revogar todas as sessões antigas por segurança
+    if (data.password) {
+      await revokeAllUserSessions(user.id);
+      // Criar nova sessão para o usuário atual
+      await createSession(user.id);
+      logger.info("Password changed, all sessions revoked", {
+        userId: user.id,
       });
+    }
+
+    // Se mudou o email, criar nova sessão
+    if (data.email && !data.password) {
+      await createSession(user.id);
     }
 
     // Revalidar páginas importantes
@@ -219,9 +238,17 @@ export async function updateCurrentUser(
     revalidatePath("/manipulador");
     revalidatePath("/settings");
 
+    logger.info("User data updated", {
+      userId: user.id,
+      changedFields: Object.keys(data),
+    });
+
     return { success: true };
   } catch (error) {
-    console.error("Erro ao atualizar usuário:", error);
+    logger.error("Failed to update current user", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return { success: false, error: "Erro ao atualizar usuário." };
   }
 }

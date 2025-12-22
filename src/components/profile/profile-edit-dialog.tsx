@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { updateCurrentUser } from "@/app/actions/profile";
+import { updateCurrentUser } from "@/app/actions/user-account";
 import { useRouter } from "next/navigation";
 
 interface Props {

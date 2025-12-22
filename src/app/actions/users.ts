@@ -2,10 +2,14 @@
 
 import { db } from "@/app/lib/db";
 import { getCurrentUser } from "@/lib/auth-helper";
-import { ROLES } from "@/lib/rbac";
+import { requireAdmin, ensureAdmin } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 
+/**
+ * Estrutura utilizada nas telas de gerenciamento de usuários para exibir
+ * o membro do workspace junto com usuário e empresa associados.
+ */
 export interface WorkspaceMemberWithDetails {
   id: string;
   role: string;
@@ -22,20 +26,17 @@ export interface WorkspaceMemberWithDetails {
 }
 
 /**
- * Lista todos os membros do workspace
- * Apenas admins podem acessar
+ * Lista todos os membros do workspace atual com seus dados básicos.
+ * Apenas administradores podem chamar esta action.
  */
 export async function getWorkspaceMembers(): Promise<
   WorkspaceMemberWithDetails[]
 > {
   const currentUser = await getCurrentUser();
 
-  if (!currentUser || currentUser.role !== ROLES.ADMIN) {
-    throw new Error(
-      "Acesso negado. Apenas administradores podem gerenciar usuários."
-    );
-  }
+  ensureAdmin(currentUser);
 
+  // Após ensureAdmin, currentUser não é null
   const members = await db.workspaceMember.findMany({
     where: {
       workspaceId: currentUser.workspaceId,
@@ -67,8 +68,8 @@ export async function getWorkspaceMembers(): Promise<
 }
 
 /**
- * Atualiza o role de um membro
- * Apenas admins podem acessar
+ * Atualiza o papel (admin/member) de um membro do workspace.
+ * Impede que o próprio usuário altere o seu próprio role.
  */
 export async function updateMemberRole(
   memberId: string,
@@ -77,12 +78,9 @@ export async function updateMemberRole(
   try {
     const currentUser = await getCurrentUser();
 
-    if (!currentUser || currentUser.role !== ROLES.ADMIN) {
-      return {
-        success: false,
-        error:
-          "Acesso negado. Apenas administradores podem gerenciar usuários.",
-      };
+    const adminCheck = requireAdmin(currentUser);
+    if (adminCheck) {
+      return adminCheck;
     }
 
     // Não permitir que o usuário altere seu próprio role
@@ -91,7 +89,7 @@ export async function updateMemberRole(
       include: { User: true },
     });
 
-    if (member?.User.id === currentUser.id) {
+    if (member?.User.id === currentUser!.id) {
       return {
         success: false,
         error: "Você não pode alterar seu próprio role.",
@@ -115,8 +113,8 @@ export async function updateMemberRole(
 }
 
 /**
- * Associa um membro a um profile
- * Apenas admins podem acessar
+ * Associa ou remove a associação de um membro a um profile de empresa
+ * dentro do mesmo workspace.
  */
 export async function updateMemberProfile(
   memberId: string,
@@ -125,12 +123,9 @@ export async function updateMemberProfile(
   try {
     const currentUser = await getCurrentUser();
 
-    if (!currentUser || currentUser.role !== ROLES.ADMIN) {
-      return {
-        success: false,
-        error:
-          "Acesso negado. Apenas administradores podem gerenciar usuários.",
-      };
+    const adminCheck = requireAdmin(currentUser);
+    if (adminCheck) {
+      return adminCheck;
     }
 
     // Se profileId é null, remover associação
@@ -145,7 +140,7 @@ export async function updateMemberProfile(
         where: { id: profileId },
       });
 
-      if (!profile || profile.workspaceId !== currentUser.workspaceId) {
+      if (!profile || profile.workspaceId !== currentUser!.workspaceId) {
         return {
           success: false,
           error: "Empresa não encontrada.",
@@ -170,8 +165,7 @@ export async function updateMemberProfile(
 }
 
 /**
- * Remove um membro do workspace
- * Apenas admins podem acessar
+ * Realiza soft delete de um membro do workspace (não remove o usuário em si).
  */
 export async function removeMember(
   memberId: string
@@ -179,12 +173,9 @@ export async function removeMember(
   try {
     const currentUser = await getCurrentUser();
 
-    if (!currentUser || currentUser.role !== ROLES.ADMIN) {
-      return {
-        success: false,
-        error:
-          "Acesso negado. Apenas administradores podem gerenciar usuários.",
-      };
+    const adminCheck = requireAdmin(currentUser);
+    if (adminCheck) {
+      return adminCheck;
     }
 
     // Não permitir que o usuário remova a si mesmo
@@ -193,7 +184,7 @@ export async function removeMember(
       include: { User: true },
     });
 
-    if (member?.User.id === currentUser.id) {
+    if (member?.User.id === currentUser!.id) {
       return {
         success: false,
         error: "Você não pode remover a si mesmo do workspace.",
@@ -218,8 +209,8 @@ export async function removeMember(
 }
 
 /**
- * Atualiza dados de um usuário (nome, email, role, senha)
- * Apenas admins podem acessar
+ * Permite que um administrador atualize dados de um usuário do workspace
+ * (nome, email, role e/ou senha) em uma única operação.
  */
 export async function updateUserByAdmin(data: {
   memberId: string;
@@ -231,11 +222,9 @@ export async function updateUserByAdmin(data: {
   try {
     const currentUser = await getCurrentUser();
 
-    if (!currentUser || currentUser.role !== ROLES.ADMIN) {
-      return {
-        success: false,
-        error: "Acesso negado. Apenas administradores podem editar usuários.",
-      };
+    const adminCheck = requireAdmin(currentUser);
+    if (adminCheck) {
+      return adminCheck;
     }
 
     const member = await db.workspaceMember.findUnique({
@@ -292,8 +281,8 @@ export async function updateUserByAdmin(data: {
 }
 
 /**
- * Cria um novo membro no workspace
- * Apenas admins podem acessar
+ * Cria um novo usuário e o adiciona como membro do workspace atual,
+ * já com role e empresa (profile) opcionais.
  */
 export async function createMember(data: {
   name: string;
@@ -305,11 +294,9 @@ export async function createMember(data: {
   try {
     const currentUser = await getCurrentUser();
 
-    if (!currentUser || currentUser.role !== ROLES.ADMIN) {
-      return {
-        success: false,
-        error: "Acesso negado. Apenas administradores podem criar usuários.",
-      };
+    const adminCheck = requireAdmin(currentUser);
+    if (adminCheck) {
+      return adminCheck;
     }
 
     // Verificar se email já existe
@@ -342,7 +329,7 @@ export async function createMember(data: {
       await tx.workspaceMember.create({
         data: {
           userId: newUser.id,
-          workspaceId: currentUser.workspaceId,
+          workspaceId: currentUser!.workspaceId,
           role: data.role,
           profileId: data.profileId || null,
         },

@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { processarArquivosXml } from "@/app/actions/processXml";
+import { processarArquivosXml } from "@/app/actions/process-xml";
 import { toast } from "sonner"; // <--- Importação nova
 
 interface ScenarioOption {
@@ -166,7 +166,7 @@ export default function XmlProcessorClient({
                 onValueChange={setSelectedScenario}
                 value={selectedScenario}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Escolha um cenário..." />
                 </SelectTrigger>
                 <SelectContent>

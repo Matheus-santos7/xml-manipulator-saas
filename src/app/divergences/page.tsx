@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-helper";
 import { DivergenceCards } from "@/components/divergences/divergence-cards";
 
+export const dynamic = "force-dynamic";
+
 export default async function DivergencesPage() {
   const user = await getCurrentUser();
 

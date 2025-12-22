@@ -11,6 +11,8 @@ import { ScenarioEditor } from "@/components/settings/scenario-editor";
 import { ProfileForm } from "@/components/settings/profile-company-form";
 import { Building2, FileCog } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 // Definimos o tipo como uma Promise (Next.js 15+)
 type SearchParams = Promise<{ profileId?: string }>;
 

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { isAuthenticated } from "@/app/actions/auth";
 import { LoginForm } from "@/components/auth/login-form";
 
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   // Se já está autenticado, redireciona
   const authenticated = await isAuthenticated();
