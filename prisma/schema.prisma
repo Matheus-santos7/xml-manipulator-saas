@@ -140,6 +140,7 @@ model ScenarioProduto {
   cEAN         String?
   cProd        String?
   NCM          String?
+  origem       String?  // Origem do produto: "0" (Nacional Puro), "1" (Importei), "2" (Comprei Importado), "3" (Nacional Misto), "4" (Nacional PPB), "6", "7", "8"
   isPrincipal  Boolean  @default(false) // Produto usado em Venda/Retorno/Devolução
   ordem        Int      @default(0) // Ordem de rotação para Remessa
   Scenario     Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)

@@ -15,8 +15,8 @@ import {
   DEVOLUCOES_CFOP,
   RETORNOS_CFOP,
   REMESSAS_CFOP,
-} from "./constantes";
-import { extrairInfosXmls } from "./xmlExtractor";
+} from "@/lib/data";
+import { extrairInfosXmls } from "./extractor";
 
 /**
  * Gera o novo nome do arquivo NFe baseado no CFOP e informações da nota

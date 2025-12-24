@@ -5,15 +5,15 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import type { Scenario } from "@prisma/client";
-import { getCurrentUser, canAccessProfile } from "@/lib/auth-helper";
+import { getCurrentUser, canAccessProfile } from "@/lib/auth";
 import {
   emitenteSchema,
   destinatarioSchema,
   produtoSchema,
   impostoSchema,
   scenarioSchema,
-} from "@/lib/scenario-schemas";
-import type { SaveScenarioInput } from "@/lib/scenario-types";
+} from "@/lib/scenarios";
+import type { SaveScenarioInput } from "@/lib/scenarios";
 
 /**
  * Cria ou atualiza um cenário de manipulação de XML, incluindo emitente,

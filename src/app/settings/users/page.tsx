@@ -1,5 +1,5 @@
 import { db } from "@/app/lib/db";
-import { getCurrentUser } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { UserManagement } from "@/components/settings/user-management";
 import { AddMemberDialog } from "@/components/settings/add-member-dialog";

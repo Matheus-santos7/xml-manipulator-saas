@@ -57,7 +57,7 @@ import {
   Copy,
   Shuffle,
 } from "lucide-react";
-import { DESTINATARIOS_DISPONIVEIS } from "@/lib/constantes";
+import { DESTINATARIOS_DISPONIVEIS } from "@/lib/data";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Schema Zod para validação do formulário
@@ -117,6 +117,7 @@ const produtoSchema = z.object({
   cEAN: z.string().optional(),
   cProd: z.string().optional(),
   NCM: z.string().optional(),
+  origem: z.string().optional(), // Origem do produto
   isPrincipal: z.boolean().default(false),
   ordem: z.number().default(0),
 });
@@ -271,6 +272,7 @@ export function ScenarioEditor({
             cProd: str(d.cProd),
             cEAN: str(d.cEAN),
             NCM: str(d.NCM),
+            origem: str(d.origem),
             isPrincipal: Boolean(d.isPrincipal ?? false),
             ordem: Number(d.ordem ?? 0),
           }))
@@ -285,6 +287,7 @@ export function ScenarioEditor({
           cProd: str(d.cProd),
           cEAN: str(d.cEAN),
           NCM: str(d.NCM),
+          origem: str(d.origem),
           isPrincipal: true,
           ordem: 1,
         },
@@ -1797,6 +1800,7 @@ export function ScenarioEditor({
                                   cEAN: "",
                                   cProd: "",
                                   NCM: "",
+                                  origem: "",
                                   isPrincipal: produtoFields.length === 0,
                                   ordem: nextOrdem,
                                 });
@@ -1988,6 +1992,53 @@ export function ScenarioEditor({
                                   </FormItem>
                                 )}
                               />
+                              <FormField
+                                control={form.control}
+                                name={`produtoData.${index}.origem`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">
+                                      Origem (ICMS)
+                                    </FormLabel>
+                                    <Select
+                                      value={field.value || ""}
+                                      onValueChange={field.onChange}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Selecione a origem" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="0">
+                                          0 - Nacional Puro
+                                        </SelectItem>
+                                        <SelectItem value="1">
+                                          1 - Importei (com DI)
+                                        </SelectItem>
+                                        <SelectItem value="2">
+                                          2 - Comprei Importado
+                                        </SelectItem>
+                                        <SelectItem value="3">
+                                          3 - Nacional Misto
+                                        </SelectItem>
+                                        <SelectItem value="4">
+                                          4 - Nacional PPB
+                                        </SelectItem>
+                                        <SelectItem value="6">
+                                          6 - Importei
+                                        </SelectItem>
+                                        <SelectItem value="7">
+                                          7 - Comprei Importado (alt)
+                                        </SelectItem>
+                                        <SelectItem value="8">
+                                          8 - Nacional Misto (alt)
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </FormItem>
+                                )}
+                              />
                             </div>
 
                             {/* Campo oculto para ordem */}
@@ -2015,6 +2066,7 @@ export function ScenarioEditor({
                                   cEAN: "",
                                   cProd: "",
                                   NCM: "",
+                                  origem: "",
                                   isPrincipal: false,
                                   ordem: nextOrdem,
                                 });

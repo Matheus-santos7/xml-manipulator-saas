@@ -1,4 +1,4 @@
-import { editarChavesEmLote, type ResultadoEdicao } from "@/lib/xmlEditor";
+import { editarChavesEmLote, type ResultadoEdicao } from "@/lib/xml/editor";
 import type { ArquivoParaProcessamento } from "./prepare-files";
 
 /**
@@ -63,6 +63,7 @@ export function editarArquivosEAtualizarReferencias(args: {
       cEAN?: string | null;
       cProd?: string | null;
       NCM?: string | null;
+      origem?: string | null;
       isPrincipal: boolean;
       ordem: number;
     }> | null;
@@ -160,6 +161,7 @@ export function editarArquivosEAtualizarReferencias(args: {
           cEAN: p.cEAN || undefined,
           cProd: p.cProd || undefined,
           NCM: p.NCM || undefined,
+          origem: p.origem || undefined,
           isPrincipal: p.isPrincipal,
           ordem: p.ordem,
         })).sort((a, b) => a.ordem - b.ordem)

@@ -1,6 +1,6 @@
 import { db } from "@/app/lib/db";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 import { DivergenceCards } from "@/components/divergences/divergence-cards";
 
 export const dynamic = "force-dynamic";

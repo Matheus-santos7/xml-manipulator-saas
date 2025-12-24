@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { scenarioSchema } from "./scenario-schemas";
+import { scenarioSchema } from "./schemas";
 import type { Prisma } from "@prisma/client";
 
 /**

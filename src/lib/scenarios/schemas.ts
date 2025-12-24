@@ -75,6 +75,7 @@ export const produtoSchema = z.object({
   cEAN: z.string().optional().nullable(),
   cProd: z.string().optional().nullable(),
   NCM: z.string().optional().nullable(),
+  origem: z.string().optional().nullable(), // Origem do produto: "0", "1", "2", "3", "4", "6", "7", "8"
   isPrincipal: z.boolean().default(false),
   ordem: z.number().default(0),
 });

@@ -2,7 +2,7 @@
  * Funções auxiliares para manipulação de Chaves de Acesso de NFe e CTe
  */
 
-import { VENDAS_CFOP } from "./constantes";
+import { VENDAS_CFOP } from "@/lib/data";
 
 /**
  * Calcula o dígito verificador de uma chave de acesso NFe/CTe

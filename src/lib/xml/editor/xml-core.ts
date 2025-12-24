@@ -1,27 +1,20 @@
 /**
- * Módulo para edição de chaves de acesso em arquivos XML (NFe, CTe, Eventos)
- * Baseado no modelo Python (funções _editar_nfe, _editar_cte, _editar_cancelamento)
- *
- * IMPORTANTE: Este módulo usa APENAS manipulação de strings (regex) para editar XMLs.
- * NÃO reconstrói o XML, preservando 100% a estrutura, ordem e formatação original.
- * Apenas os valores específicos das tags são alterados, nenhuma tag é adicionada ou removida.
+ * Núcleo de edição de XMLs fiscais via regex, preservando a estrutura.
+ * Migração do antigo src/lib/xmlEditor.ts para src/lib/xml/editor/xml-core.ts
  */
 
 import { XMLParser } from "fast-xml-parser";
-import type { ChaveMapping, ReferenceMapping } from "./chaveHelper";
+import type { ChaveMapping, ReferenceMapping } from "@/lib/xml";
+import { editarInutilizacao } from "./inutilizacao-editor";
 import {
   VENDAS_CFOP,
   DEVOLUCOES_CFOP,
   RETORNOS_CFOP,
   REMESSAS_CFOP,
   type TipoOperacao,
-} from "./constantes";
+} from "@/lib/data";
 
-/**
- * Dados do Emitente/Remetente para alteração
- */
 export interface DadosEmitente {
-  // Campos diretos do emitente
   CNPJ?: string;
   xNome?: string;
   xFant?: string;
@@ -30,8 +23,6 @@ export interface DadosEmitente {
   IM?: string;
   CNAE?: string;
   CRT?: string;
-
-  // Campos do endereço
   xLgr?: string;
   nro?: string;
   xCpl?: string;
@@ -45,18 +36,11 @@ export interface DadosEmitente {
   fone?: string;
 }
 
-/**
- * Dados do Destinatário para alteração
- * Suporta tanto PJ (CNPJ) quanto PF (CPF)
- */
 export interface DadosDestinatario {
-  // Campos de identificação (PJ ou PF)
   CNPJ?: string;
   CPF?: string;
   xNome?: string;
   IE?: string;
-
-  // Campos do endereço
   xLgr?: string;
   nro?: string;
   xBairro?: string;
@@ -69,21 +53,15 @@ export interface DadosDestinatario {
   fone?: string;
 }
 
-/**
- * Dados do Produto para alteração
- */
 export interface DadosProduto {
-  xProd?: string; // Descrição do produto
-  cEAN?: string; // Código de barras (GTIN)
-  cProd?: string; // Código do produto
-  NCM?: string; // Nomenclatura Comum do Mercosul
+  xProd?: string;
+  cEAN?: string;
+  cProd?: string;
+  NCM?: string;
+  // Origem do produto para ICMS (<orig>)
+  origem?: string;
 }
 
-/**
- * Mapeamento de CST por Tipo de Operação
- * Baseado no modelo Python: mapeamento_cst por grupo de notas
- * Exemplo: { tipoOperacao: "VENDA", icms: "00", pis: "01", cofins: "01", ipi: "50" }
- */
 export interface CstMappingData {
   tipoOperacao: TipoOperacao;
   icms?: string | null;
@@ -92,22 +70,15 @@ export interface CstMappingData {
   cofins?: string | null;
 }
 
-/**
- * Dados para Reforma Tributária (IBS/CBS)
- * Baseado no modelo Python: config_reforma_trib
- */
 export interface TaxReformRuleData {
-  pIBSUF?: string | null; // Alíquota IBS UF (ex: "9.50")
-  pIBSMun?: string | null; // Alíquota IBS Municipal (ex: "3.50")
-  pCBS?: string | null; // Alíquota CBS (ex: "8.80")
-  vDevTrib?: string | null; // Valor de devolução tributária
-  cClassTrib?: string | null; // Código de classificação tributária
-  CST?: string | null; // CST do IBS/CBS
+  pIBSUF?: string | null;
+  pIBSMun?: string | null;
+  pCBS?: string | null;
+  vDevTrib?: string | null;
+  cClassTrib?: string | null;
+  CST?: string | null;
 }
 
-/**
- * Resultado da edição de um arquivo XML
- */
 export interface ResultadoEdicao {
   nomeArquivo: string;
   tipo: "NFe" | "CTe" | "Cancelamento" | "Inutilizacao" | "Desconhecido";
@@ -117,9 +88,6 @@ export interface ResultadoEdicao {
   erro?: string;
 }
 
-/**
- * Resultado do cálculo dos valores IBS/CBS por item
- */
 interface ValoresIBSCBS {
   vBC: string;
   vIBSUF: string;
@@ -128,25 +96,15 @@ interface ValoresIBSCBS {
   vDevTrib: string;
 }
 
-/**
- * Formata um número para 2 casas decimais
- */
 function formatDecimal(value: number): string {
   return value.toFixed(2);
 }
 
-/**
- * Converte string de porcentagem para número (ex: "9,50" ou "9.50" -> 9.50)
- */
 function parsePercent(value: string | null | undefined): number {
   if (!value) return 0;
   return parseFloat(value.replace(",", ".")) || 0;
 }
 
-/**
- * Cria o bloco XML <IBSCBS> para um item de produto
- * Baseado na função _criar_bloco_ibscbs do Python
- */
 function criarBlocoIBSCBS(
   vProd: string,
   taxRule: TaxReformRuleData
@@ -200,10 +158,6 @@ function criarBlocoIBSCBS(
   };
 }
 
-/**
- * Cria o bloco XML <IBSCBSTot> para a totalização da nota
- * Baseado na função _criar_bloco_ibscbs_tot do Python
- */
 function criarBlocoIBSCBSTot(totais: {
   vBC: number;
   vIBSUF: number;
@@ -242,89 +196,76 @@ function criarBlocoIBSCBSTot(totais: {
   );
 }
 
-/**
- * Aplica a Reforma Tributária (IBS/CBS) em um XML de NFe
- * Adiciona blocos <IBSCBS> em cada item e <IBSCBSTot> nos totais
- */
+function formatarDataParaXml(dataStr: string): string {
+  const [dia, mes, ano] = dataStr.split("/");
+  const agora = new Date();
+  const horas = agora.getHours().toString().padStart(2, "0");
+  const minutos = agora.getMinutes().toString().padStart(2, "0");
+  const segundos = agora.getSeconds().toString().padStart(2, "0");
+
+  return `${ano}-${mes}-${dia}T${horas}:${minutos}:${segundos}-03:00`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findElement(obj: any, path: string): any {
+  if (!obj) return null;
+  const parts = path.split("/");
+  let current = obj;
+  for (const part of parts) {
+    if (!current) return null;
+    if (Array.isArray(current)) {
+      current = current[0];
+    }
+    current = current[part];
+  }
+  return current;
+}
+
 function aplicarReformaTributaria(
   xmlContent: string,
   taxRule: TaxReformRuleData,
   alteracoes: string[]
 ): string {
   let xmlEditado = xmlContent;
-
-  // Acumuladores para totalização
-  const totais = {
-    vBC: 0,
-    vIBSUF: 0,
-    vIBSMun: 0,
-    vCBS: 0,
-    vDevTrib: 0,
-  };
-
-  // 1. Processa cada item <det> e adiciona <IBSCBS> dentro de <imposto>
+  const totais = { vBC: 0, vIBSUF: 0, vIBSMun: 0, vCBS: 0, vDevTrib: 0 };
   const regexDet = /<det[^>]*>([\s\S]*?)<\/det>/gi;
   let match;
   let itemCount = 0;
-
-  // Primeiro, coletamos todos os blocos <det> e seus valores
   const detBlocks: Array<{ original: string; edited: string }> = [];
-
   while ((match = regexDet.exec(xmlContent)) !== null) {
     const detBlock = match[0];
     let detBlockEditado = detBlock;
-
-    // Extrai o vProd do item
     const vProdMatch = detBlock.match(/<vProd>([^<]+)<\/vProd>/i);
     if (vProdMatch && vProdMatch[1]) {
       const vProd = vProdMatch[1];
-
-      // Cria o bloco IBSCBS
       const { xml: ibscbsXml, valores } = criarBlocoIBSCBS(vProd, taxRule);
-
-      // Acumula os totais
       totais.vBC += parseFloat(valores.vBC);
       totais.vIBSUF += parseFloat(valores.vIBSUF);
       totais.vIBSMun += parseFloat(valores.vIBSMun);
       totais.vCBS += parseFloat(valores.vCBS);
       totais.vDevTrib += parseFloat(valores.vDevTrib);
-
-      // Remove bloco IBSCBS existente se houver
       detBlockEditado = detBlockEditado.replace(
         /<IBSCBS>[\s\S]*?<\/IBSCBS>/gi,
         ""
       );
-
-      // Insere o novo bloco IBSCBS antes de </imposto>
       detBlockEditado = detBlockEditado.replace(
         /(<\/imposto>)/i,
         `${ibscbsXml}$1`
       );
-
       itemCount++;
     }
-
     detBlocks.push({ original: detBlock, edited: detBlockEditado });
   }
-
-  // Aplica as substituições
   for (const block of detBlocks) {
     xmlEditado = xmlEditado.replace(block.original, block.edited);
   }
-
   if (itemCount > 0) {
     alteracoes.push(
       `Reforma Tributária: <IBSCBS> adicionado em ${itemCount} item(s)`
     );
   }
-
-  // 2. Adiciona ou atualiza <IBSCBSTot> dentro de <total>
   const ibscbsTotXml = criarBlocoIBSCBSTot(totais);
-
-  // Remove bloco IBSCBSTot existente se houver
   xmlEditado = xmlEditado.replace(/<IBSCBSTot>[\s\S]*?<\/IBSCBSTot>/gi, "");
-
-  // Insere o novo bloco IBSCBSTot antes de </total>
   if (xmlEditado.includes("</total>")) {
     xmlEditado = xmlEditado.replace(/(<\/total>)/i, `${ibscbsTotXml}$1`);
     alteracoes.push(
@@ -335,49 +276,9 @@ function aplicarReformaTributaria(
       )}, vCBS: ${formatDecimal(totais.vCBS)})`
     );
   }
-
   return xmlEditado;
 }
 
-/**
- * Formata uma data no formato ISO para XMLs (YYYY-MM-DDTHH:MM:SS-03:00)
- */
-function formatarDataParaXml(dataStr: string): string {
-  // dataStr formato: DD/MM/YYYY
-  const [dia, mes, ano] = dataStr.split("/");
-  const agora = new Date();
-  const horas = agora.getHours().toString().padStart(2, "0");
-  const minutos = agora.getMinutes().toString().padStart(2, "0");
-  const segundos = agora.getSeconds().toString().padStart(2, "0");
-
-  return `${ano}-${mes}-${dia}T${horas}:${minutos}:${segundos}-03:00`;
-}
-
-/**
- * Busca um elemento no XML navegando por um path
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function findElement(obj: any, path: string): any {
-  if (!obj) return null;
-
-  const parts = path.split("/");
-  let current = obj;
-
-  for (const part of parts) {
-    if (!current) return null;
-    if (Array.isArray(current)) {
-      current = current[0];
-    }
-    current = current[part];
-  }
-
-  return current;
-}
-
-/**
- * Edita as chaves de acesso em um XML de NFe usando APENAS manipulação de strings
- * NÃO reconstrói o XML - preserva 100% a estrutura original
- */
 function editarChavesNFe(
   xmlContent: string,
   fileName: string,
@@ -396,7 +297,6 @@ function editarChavesNFe(
 ): ResultadoEdicao {
   const alteracoes: string[] = [];
   let xmlEditado = xmlContent;
-
   try {
     const parser = new XMLParser({
       ignoreAttributes: false,
@@ -404,15 +304,9 @@ function editarChavesNFe(
       parseAttributeValue: false,
       trimValues: false,
     });
-
     const parsed = parser.parse(xmlContent);
-
-    // Verifica se é NFe
     let infNFe = findElement(parsed, "nfeProc/NFe/infNFe");
-    if (!infNFe) {
-      infNFe = findElement(parsed, "NFe/infNFe");
-    }
-
+    if (!infNFe) infNFe = findElement(parsed, "NFe/infNFe");
     if (!infNFe) {
       return {
         nomeArquivo: fileName,
@@ -422,8 +316,6 @@ function editarChavesNFe(
         erro: "Não é um XML de NFe válido",
       };
     }
-
-    // Extrai a chave original
     const idAttr = infNFe["@_Id"] || infNFe["@_id"];
     if (!idAttr) {
       return {
@@ -434,46 +326,31 @@ function editarChavesNFe(
         erro: "Chave não encontrada no atributo Id",
       };
     }
-
     const chaveOriginal = idAttr.replace(/^NFe/, "");
-
-    // 1. Atualiza o atributo Id do infNFe (REGEX - preserva estrutura)
     if (chaveMapping[chaveOriginal]) {
       const novaChave = chaveMapping[chaveOriginal];
-
-      // Regex para Id="NFe..." ou id="NFe..."
       const regexId = new RegExp(
         `(<infNFe[^>]*\\s(?:Id|id)=["'])NFe${chaveOriginal}(["'][^>]*>)`,
         "g"
       );
-
       if (regexId.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(regexId, `$1NFe${novaChave}$2`);
         alteracoes.push(`Chave de Acesso ID alterada para: ${novaChave}`);
       }
-
-      // 2. Atualiza a chave no protocolo <chNFe> (REGEX)
       const regexChNFe = new RegExp(`(<chNFe>)${chaveOriginal}(</chNFe>)`, "g");
-
       if (regexChNFe.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(regexChNFe, `$1${novaChave}$2`);
         alteracoes.push("Chave de Acesso do Protocolo alterada");
       }
     }
-
-    // 3. Atualiza a referência de NFe (REGEX)
     if (referenceMap[chaveOriginal]) {
       const chaveReferenciada = referenceMap[chaveOriginal];
-
       if (chaveMapping[chaveReferenciada]) {
         const novaChaveReferenciada = chaveMapping[chaveReferenciada];
-
-        // Regex para <refNFe>chave</refNFe>
         const regexRefNFe = new RegExp(
           `(<refNFe>)${chaveReferenciada}(</refNFe>)`,
           "g"
         );
-
         if (regexRefNFe.test(xmlEditado)) {
           xmlEditado = xmlEditado.replace(
             regexRefNFe,
@@ -485,8 +362,6 @@ function editarChavesNFe(
         }
       }
     }
-
-    // 4. Atualiza UF no IDE (REGEX)
     if (novoUF) {
       const regexCUF = /(<cUF>)[^<]+(<\/cUF>)/g;
       if (regexCUF.test(xmlEditado)) {
@@ -494,8 +369,6 @@ function editarChavesNFe(
         alteracoes.push(`UF <cUF> alterado para: ${novoUF}`);
       }
     }
-
-    // 5. Atualiza Série no IDE (REGEX)
     if (novaSerie) {
       const regexSerie = /(<serie>)[^<]+(<\/serie>)/g;
       if (regexSerie.test(xmlEditado)) {
@@ -503,10 +376,7 @@ function editarChavesNFe(
         alteracoes.push(`Série <serie> alterada para: ${novaSerie}`);
       }
     }
-
-    // 6. Atualiza Emitente no <emit> e <enderEmit> (REGEX)
     if (novoEmitente) {
-      // Campos diretos do <emit> (fora de enderEmit)
       const camposEmit = [
         { campo: "CNPJ", valor: novoEmitente.CNPJ },
         { campo: "xNome", valor: novoEmitente.xNome },
@@ -517,8 +387,6 @@ function editarChavesNFe(
         { campo: "CNAE", valor: novoEmitente.CNAE },
         { campo: "CRT", valor: novoEmitente.CRT },
       ];
-
-      // Campos do endereço <enderEmit>
       const camposEnderEmit = [
         { campo: "xLgr", valor: novoEmitente.xLgr },
         { campo: "nro", valor: novoEmitente.nro },
@@ -532,11 +400,8 @@ function editarChavesNFe(
         { campo: "xPais", valor: novoEmitente.xPais },
         { campo: "fone", valor: novoEmitente.fone },
       ];
-
-      // Atualiza campos diretos do <emit>
       for (const { campo, valor } of camposEmit) {
         if (valor) {
-          // Regex para encontrar tag dentro de <emit> mas fora de <enderEmit>
           const regex = new RegExp(
             `(<emit>(?:(?!<enderEmit>)[\\s\\S])*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
             "i"
@@ -547,11 +412,8 @@ function editarChavesNFe(
           }
         }
       }
-
-      // Atualiza campos do <enderEmit>
       for (const { campo, valor } of camposEnderEmit) {
         if (valor) {
-          // Regex para encontrar tag dentro de <enderEmit>
           const regex = new RegExp(
             `(<enderEmit[^>]*>[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
             "i"
@@ -565,30 +427,21 @@ function editarChavesNFe(
         }
       }
     }
-
-    // 7. Atualiza Destinatário no <dest> e <enderDest> (REGEX)
-    // Apenas para notas de VENDA ou DEVOLUÇÃO (baseado no CFOP)
     if (novoDestinatario) {
-      // Extrai o CFOP do primeiro item (det)
       const det = findElement(infNFe, "det");
       const prod = det ? findElement(det, "prod") : null;
       const cfopValue = prod ? findElement(prod, "CFOP") : null;
       const cfop =
         typeof cfopValue === "string" ? cfopValue : String(cfopValue || "");
-
       const deveAtualizarDestinatario =
         VENDAS_CFOP.includes(cfop) || DEVOLUCOES_CFOP.includes(cfop);
-
       if (deveAtualizarDestinatario) {
-        // Campos diretos do <dest> (fora de enderDest)
         const camposDest = [
           { campo: "CNPJ", valor: novoDestinatario.CNPJ },
           { campo: "CPF", valor: novoDestinatario.CPF },
           { campo: "xNome", valor: novoDestinatario.xNome },
           { campo: "IE", valor: novoDestinatario.IE },
         ];
-
-        // Campos do endereço <enderDest>
         const camposEnderDest = [
           { campo: "xLgr", valor: novoDestinatario.xLgr },
           { campo: "nro", valor: novoDestinatario.nro },
@@ -601,11 +454,8 @@ function editarChavesNFe(
           { campo: "xPais", valor: novoDestinatario.xPais },
           { campo: "fone", valor: novoDestinatario.fone },
         ];
-
-        // Atualiza campos diretos do <dest>
         for (const { campo, valor } of camposDest) {
           if (valor && valor.trim() !== "") {
-            // Regex para encontrar tag dentro de <dest> mas fora de <enderDest>
             const regex = new RegExp(
               `(<dest>(?:(?!<enderDest>)[\\s\\S])*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
               "i"
@@ -618,11 +468,8 @@ function editarChavesNFe(
             }
           }
         }
-
-        // Atualiza campos do <enderDest>
         for (const { campo, valor } of camposEnderDest) {
           if (valor && valor.trim() !== "") {
-            // Regex para encontrar tag dentro de <enderDest>
             const regex = new RegExp(
               `(<enderDest[^>]*>[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
               "i"
@@ -637,77 +484,49 @@ function editarChavesNFe(
         }
       }
     }
-
-    // 8. Atualiza Produtos nos itens <det> (REGEX)
-    // Para VENDA/RETORNO/DEVOLUÇÃO: usa produto principal
-    // Para REMESSA SIMBÓLICA (com refNFe): usa produto principal
-    // Para REMESSA NORMAL (sem refNFe): rotaciona entre produtos por ordem
     if (produtos && produtos.length > 0) {
-      // Extrai o CFOP do primeiro item para determinar o tipo de operação
       const det = findElement(infNFe, "det");
       const prod = det ? findElement(det, "prod") : null;
       const cfopValue = prod ? findElement(prod, "CFOP") : null;
       const cfop =
         typeof cfopValue === "string" ? cfopValue : String(cfopValue || "");
-
       const isVendaRetornoOuDevolucao =
         VENDAS_CFOP.includes(cfop) ||
         DEVOLUCOES_CFOP.includes(cfop) ||
         RETORNOS_CFOP.includes(cfop);
-
       const isRemessa = REMESSAS_CFOP.includes(cfop);
-
-      // Verifica se é remessa simbólica (tem nota referenciada)
-      // Remessa simbólica possui <refNFe> dentro de <NFref>
       const regexRefNFeCheck = /<refNFe>[^<]+<\/refNFe>/i;
       const isRemessaSimbolicaOuRetorno = regexRefNFeCheck.test(xmlEditado);
-
-      // Remessa normal: é remessa E não tem nota referenciada
       const isRemessaNormal = isRemessa && !isRemessaSimbolicaOuRetorno;
-
-      // Regex para encontrar todos os blocos <det>
       const regexDet = /<det[^>]*>[\s\S]*?<\/det>/gi;
       const detBlocks = xmlEditado.match(regexDet);
-
       if (detBlocks && (isVendaRetornoOuDevolucao || isRemessa)) {
         detBlocks.forEach((detBlock, index) => {
           let detBlockEditado = detBlock;
           let produtoSelecionado: DadosProduto | null = null;
-
           if (isVendaRetornoOuDevolucao || isRemessaSimbolicaOuRetorno) {
-            // Para VENDA/RETORNO/DEVOLUÇÃO e REMESSA SIMBÓLICA: usa o produto principal
             produtoSelecionado = produtos.find((p) => p.isPrincipal) || null;
           } else if (isRemessaNormal) {
-            // Para REMESSA NORMAL (sem refNFe): rotaciona pelos produtos usando ordem
-            // index % produtos.length garante que sempre haverá um produto válido
             produtoSelecionado = produtos[index % produtos.length];
           }
-
           if (produtoSelecionado) {
-            // Campos do produto que podem ser alterados
             const camposProd = [
               { campo: "xProd", valor: produtoSelecionado.xProd },
               { campo: "cEAN", valor: produtoSelecionado.cEAN },
               { campo: "cProd", valor: produtoSelecionado.cProd },
               { campo: "NCM", valor: produtoSelecionado.NCM },
             ];
-
-            // Atualiza cada campo do produto dentro deste <det>
             for (const { campo, valor } of camposProd) {
               if (valor && valor.trim() !== "") {
-                // Regex para encontrar o campo dentro de <prod>
                 const regex = new RegExp(
                   `(<prod[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
                   "i"
                 );
-
                 if (regex.test(detBlockEditado)) {
                   detBlockEditado = detBlockEditado.replace(
                     regex,
                     `$1$2${valor}$3`
                   );
-
-                  // Adiciona log apenas na primeira ocorrência
                   if (index === 0) {
                     const tipoOp = isRemessaNormal
                       ? "Remessa (rotação)"
@@ -720,17 +539,34 @@ function editarChavesNFe(
               }
             }
 
-            // Substitui o bloco <det> original pelo editado
+            // Atualiza a origem do produto dentro do bloco ICMS (<orig>)
+            if (
+              produtoSelecionado.origem &&
+              produtoSelecionado.origem.trim() !== ""
+            ) {
+              // Procura qualquer ocorrência de <orig> dentro do bloco <ICMS> do item
+              const regexOrig = /(<ICMS[^>]*>[\s\S]*?)(<orig>)[^<]+(<\/orig>)/i;
+              if (regexOrig.test(detBlockEditado)) {
+                detBlockEditado = detBlockEditado.replace(
+                  regexOrig,
+                  `$1$2${produtoSelecionado.origem}$3`
+                );
+                if (index === 0) {
+                  const tipoOp = isRemessaNormal
+                    ? "Remessa (rotação)"
+                    : "Venda/Retorno/Devolução/Remessa Simbólica (principal)";
+                  alteracoes.push(
+                    `Produto ${tipoOp}: Origem (ICMS orig) alterada para ${produtoSelecionado.origem}`
+                  );
+                }
+              }
+            }
             xmlEditado = xmlEditado.replace(detBlock, detBlockEditado);
           }
         });
       }
     }
-
-    // 9. Atualiza CST por Tipo de Operação em cada item <det> (REGEX)
-    // Identifica o tipo de operação pelo CFOP e aplica os CSTs configurados
     if (cstMappings && cstMappings.length > 0) {
-      // Cria um mapa para acesso rápido: tipoOperacao -> { icms, ipi, pis, cofins }
       const cstMapByTipoOp = new Map<
         TipoOperacao,
         {
@@ -748,8 +584,6 @@ function editarChavesNFe(
           cofins: mapping.cofins,
         });
       }
-
-      // Função auxiliar para determinar o tipo de operação pelo CFOP
       const getTipoOperacaoByCfop = (cfop: string): TipoOperacao | null => {
         if (VENDAS_CFOP.includes(cfop)) return "VENDA";
         if (DEVOLUCOES_CFOP.includes(cfop)) return "DEVOLUCAO";
@@ -757,29 +591,17 @@ function editarChavesNFe(
         if (REMESSAS_CFOP.includes(cfop)) return "REMESSA";
         return null;
       };
-
-      // Regex para encontrar todos os blocos <det>
       const regexDetCst = /<det[^>]*>[\s\S]*?<\/det>/gi;
       const detBlocksCst = xmlEditado.match(regexDetCst);
-
       if (detBlocksCst) {
         for (const detBlock of detBlocksCst) {
           let detBlockEditado = detBlock;
-
-          // Extrai o CFOP deste item
           const cfopMatch = detBlock.match(/<CFOP>([^<]+)<\/CFOP>/i);
           const cfopItem = cfopMatch ? cfopMatch[1] : null;
-
-          // Determina o tipo de operação pelo CFOP
           const tipoOp = cfopItem ? getTipoOperacaoByCfop(cfopItem) : null;
-
           if (tipoOp && cstMapByTipoOp.has(tipoOp)) {
             const cstRules = cstMapByTipoOp.get(tipoOp)!;
-
-            // Aplica CST do ICMS (pode estar em ICMSxx, como ICMS00, ICMS10, etc.)
             if (cstRules.icms) {
-              // O CST do ICMS está dentro de <ICMS><ICMSxx><CST>valor</CST>...
-              // ou direto em <ICMS><ICMSSN...><CSOSN> para Simples Nacional
               const regexCstIcms =
                 /(<ICMS[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i;
               if (regexCstIcms.test(detBlockEditado)) {
@@ -792,8 +614,6 @@ function editarChavesNFe(
                 );
               }
             }
-
-            // Aplica CST do IPI (dentro de <IPI><IPITrib> ou <IPI><IPINT>)
             if (cstRules.ipi) {
               const regexCstIpi = /(<IPI[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i;
               if (regexCstIpi.test(detBlockEditado)) {
@@ -806,8 +626,6 @@ function editarChavesNFe(
                 );
               }
             }
-
-            // Aplica CST do PIS (dentro de <PIS><PISAliq>, <PIS><PISQtde>, etc.)
             if (cstRules.pis) {
               const regexCstPis = /(<PIS[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i;
               if (regexCstPis.test(detBlockEditado)) {
@@ -820,8 +638,6 @@ function editarChavesNFe(
                 );
               }
             }
-
-            // Aplica CST do COFINS (dentro de <COFINS><COFINSAliq>, etc.)
             if (cstRules.cofins) {
               const regexCstCofins =
                 /(<COFINS[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i;
@@ -835,8 +651,6 @@ function editarChavesNFe(
                 );
               }
             }
-
-            // Substitui o bloco <det> original pelo editado
             if (detBlockEditado !== detBlock) {
               xmlEditado = xmlEditado.replace(detBlock, detBlockEditado);
             }
@@ -844,19 +658,13 @@ function editarChavesNFe(
         }
       }
     }
-
-    // 10. Atualiza as datas (REGEX)
     if (novaData) {
       const novaDataFormatada = formatarDataParaXml(novaData);
-
-      // dhEmi - Data/Hora de Emissão
       const regexDhEmi = /(<dhEmi>)[^<]+(<\/dhEmi>)/g;
       if (regexDhEmi.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(regexDhEmi, `$1${novaDataFormatada}$2`);
         alteracoes.push(`Data de Emissão <dhEmi> alterada para ${novaData}`);
       }
-
-      // dhSaiEnt - Data/Hora de Saída/Entrada
       const regexDhSaiEnt = /(<dhSaiEnt>)[^<]+(<\/dhSaiEnt>)/g;
       if (regexDhSaiEnt.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(
@@ -867,8 +675,6 @@ function editarChavesNFe(
           `Data de Saída/Entrada <dhSaiEnt> alterada para ${novaData}`
         );
       }
-
-      // dhRecbto no protocolo
       const regexDhRecbto = /(<dhRecbto>)[^<]+(<\/dhRecbto>)/g;
       if (regexDhRecbto.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(
@@ -880,8 +686,6 @@ function editarChavesNFe(
         );
       }
     }
-
-    // 11. Aplica Reforma Tributária (IBS/CBS) se configurado
     if (
       taxReformRule &&
       (taxReformRule.pIBSUF || taxReformRule.pIBSMun || taxReformRule.pCBS)
@@ -892,7 +696,6 @@ function editarChavesNFe(
         alteracoes
       );
     }
-
     if (alteracoes.length === 0) {
       return {
         nomeArquivo: fileName,
@@ -902,13 +705,12 @@ function editarChavesNFe(
         conteudoEditado: xmlContent,
       };
     }
-
     return {
       nomeArquivo: fileName,
       tipo: "NFe",
       sucesso: true,
       alteracoes,
-      conteudoEditado: xmlEditado, // Retorna o XML com alterações via regex
+      conteudoEditado: xmlEditado,
     };
   } catch (error) {
     return {
@@ -921,10 +723,6 @@ function editarChavesNFe(
   }
 }
 
-/**
- * Edita as chaves de acesso em um XML de CTe usando APENAS manipulação de strings
- * NÃO reconstrói o XML - preserva 100% a estrutura original
- */
 function editarChavesCTe(
   xmlContent: string,
   fileName: string,
@@ -937,7 +735,6 @@ function editarChavesCTe(
 ): ResultadoEdicao {
   const alteracoes: string[] = [];
   let xmlEditado = xmlContent;
-
   try {
     const parser = new XMLParser({
       ignoreAttributes: false,
@@ -945,15 +742,9 @@ function editarChavesCTe(
       parseAttributeValue: false,
       trimValues: false,
     });
-
     const parsed = parser.parse(xmlContent);
-
-    // Verifica se é CTe
     let infCte = findElement(parsed, "cteProc/CTe/infCte");
-    if (!infCte) {
-      infCte = findElement(parsed, "CTe/infCte");
-    }
-
+    if (!infCte) infCte = findElement(parsed, "CTe/infCte");
     if (!infCte) {
       return {
         nomeArquivo: fileName,
@@ -963,8 +754,6 @@ function editarChavesCTe(
         erro: "Não é um XML de CTe válido",
       };
     }
-
-    // Extrai a chave original
     const idAttr = infCte["@_Id"] || infCte["@_id"];
     if (!idAttr) {
       return {
@@ -975,64 +764,44 @@ function editarChavesCTe(
         erro: "Chave não encontrada no atributo Id",
       };
     }
-
     const chaveOriginal = idAttr.replace(/^CTe/, "");
-
-    // 1. Atualiza o atributo Id do infCte (REGEX)
     if (chaveMapping[chaveOriginal]) {
       const novaChave = chaveMapping[chaveOriginal];
-
-      // Regex para Id="CTe..." ou id="CTe..."
       const regexId = new RegExp(
         `(<infCte[^>]*\\s(?:Id|id)=["'])CTe${chaveOriginal}(["'][^>]*>)`,
         "g"
       );
-
       if (regexId.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(regexId, `$1CTe${novaChave}$2`);
         alteracoes.push(`Chave de acesso do CTe alterada para: ${novaChave}`);
       }
-
-      // 2. Atualiza a chave no protocolo <chCTe> (REGEX)
       const regexChCTe = new RegExp(`(<chCTe>)${chaveOriginal}(</chCTe>)`, "g");
-
       if (regexChCTe.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(regexChCTe, `$1${novaChave}$2`);
         alteracoes.push("protCTe/infProt/chCTe sincronizado");
       }
     }
-
-    // 3. Atualiza a chave da NFe referenciada no CTe (REGEX)
-    // Busca a chave atual diretamente no XML usando regex (mais confiável)
     const regexChaveAtual = /<infNFe[^>]*>[\s\S]*?<chave>([^<]+)<\/chave>/i;
     const matchChaveAtual = xmlEditado.match(regexChaveAtual);
-
     if (matchChaveAtual && matchChaveAtual[1]) {
       const chaveNFeAtual = matchChaveAtual[1];
-
-      // Tenta atualizar pela chave mapeada
       if (chaveMapping[chaveNFeAtual]) {
         const novaChaveNFe = chaveMapping[chaveNFeAtual];
-
         const regexChaveNFe = new RegExp(
           `(<chave>)${chaveNFeAtual}(</chave>)`,
           "g"
         );
-
         if (regexChaveNFe.test(xmlEditado)) {
           xmlEditado = xmlEditado.replace(regexChaveNFe, `$1${novaChaveNFe}$2`);
           alteracoes.push(
             `Referência de NFe <chave> atualizada para: ${novaChaveNFe}`
           );
         }
-      }
-      // Se não encontrou no mapeamento mas tem chaveVendaNova, força a atualização
-      else if (chaveVendaNova && chaveNFeAtual !== chaveVendaNova) {
+      } else if (chaveVendaNova && chaveNFeAtual !== chaveVendaNova) {
         const regexChaveNFe = new RegExp(
           `(<chave>)${chaveNFeAtual}(</chave>)`,
           "g"
         );
-
         if (regexChaveNFe.test(xmlEditado)) {
           xmlEditado = xmlEditado.replace(
             regexChaveNFe,
@@ -1044,8 +813,6 @@ function editarChavesCTe(
         }
       }
     }
-
-    // 4. Atualiza UF no IDE (REGEX) - apenas para CTe
     if (novoUF) {
       const regexCUF = /(<cUF>)[^<]+(<\/cUF>)/g;
       if (regexCUF.test(xmlEditado)) {
@@ -1053,21 +820,13 @@ function editarChavesCTe(
         alteracoes.push(`UF <cUF> alterado para: ${novoUF}`);
       }
     }
-
-    // 5. Atualiza Remetente no <rem> e <enderReme> (REGEX)
-    // No CTe, o remetente (<rem>) corresponde ao emitente da NFe
     if (novoEmitente) {
-      // Campos diretos do <rem> (fora de enderReme)
-      // Baseado no modelo Python: CNPJ, xNome, xFant, IE
       const camposRem = [
         { campo: "CNPJ", valor: novoEmitente.CNPJ },
         { campo: "xNome", valor: novoEmitente.xNome },
         { campo: "xFant", valor: novoEmitente.xFant },
         { campo: "IE", valor: novoEmitente.IE },
       ];
-
-      // Campos do endereço <enderReme>
-      // Inclui: xLgr, nro, xCpl, xBairro, cMun, xMun, CEP, UF, fone
       const camposEnderReme = [
         { campo: "xLgr", valor: novoEmitente.xLgr },
         { campo: "nro", valor: novoEmitente.nro },
@@ -1079,12 +838,8 @@ function editarChavesCTe(
         { campo: "UF", valor: novoEmitente.UF },
         { campo: "fone", valor: novoEmitente.fone },
       ];
-
-      // Atualiza campos diretos do <rem> usando regex simples
-      // A estratégia é: encontrar o bloco <rem>...</rem> e substituir as tags dentro dele
       for (const { campo, valor } of camposRem) {
         if (valor && valor.trim() !== "") {
-          // Regex para encontrar tag dentro de <rem> mas fora de <enderReme>
           const regex = new RegExp(
             `(<rem>(?:(?!<enderReme>)[\\s\\S])*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
             "i"
@@ -1095,11 +850,8 @@ function editarChavesCTe(
           }
         }
       }
-
-      // Atualiza campos do <enderReme>
       for (const { campo, valor } of camposEnderReme) {
         if (valor && valor.trim() !== "") {
-          // Regex para encontrar tag dentro de <enderReme>
           const regex = new RegExp(
             `(<enderReme[^>]*>[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
             "i"
@@ -1113,18 +865,13 @@ function editarChavesCTe(
         }
       }
     }
-
-    // 6. Atualiza Destinatário no <dest> e <enderDest> (REGEX)
     if (novoDestinatario) {
-      // Campos diretos do <dest>
       const camposDest = [
         { campo: "CNPJ", valor: novoDestinatario.CNPJ },
         { campo: "CPF", valor: novoDestinatario.CPF },
         { campo: "xNome", valor: novoDestinatario.xNome },
         { campo: "IE", valor: novoDestinatario.IE },
       ];
-
-      // Campos do endereço <enderDest>
       const camposEnderDest = [
         { campo: "xLgr", valor: novoDestinatario.xLgr },
         { campo: "nro", valor: novoDestinatario.nro },
@@ -1137,11 +884,8 @@ function editarChavesCTe(
         { campo: "xPais", valor: novoDestinatario.xPais },
         { campo: "fone", valor: novoDestinatario.fone },
       ];
-
-      // Atualiza campos diretos do <dest>
       for (const { campo, valor } of camposDest) {
         if (valor && valor.trim() !== "") {
-          // Regex para encontrar tag dentro de <dest> mas fora de <enderDest>
           const regex = new RegExp(
             `(<dest>(?:(?!<enderDest>)[\\s\\S])*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
             "i"
@@ -1154,11 +898,8 @@ function editarChavesCTe(
           }
         }
       }
-
-      // Atualiza campos do <enderDest>
       for (const { campo, valor } of camposEnderDest) {
         if (valor && valor.trim() !== "") {
-          // Regex para encontrar tag dentro de <enderDest>
           const regex = new RegExp(
             `(<enderDest[^>]*>[\\s\\S]*?)(<${campo}>)[^<]+(<\\/${campo}>)`,
             "i"
@@ -1172,19 +913,13 @@ function editarChavesCTe(
         }
       }
     }
-
-    // 7. Atualiza as datas (REGEX)
     if (novaData) {
       const novaDataFormatada = formatarDataParaXml(novaData);
-
-      // dhEmi
       const regexDhEmi = /(<dhEmi>)[^<]+(<\/dhEmi>)/g;
       if (regexDhEmi.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(regexDhEmi, `$1${novaDataFormatada}$2`);
         alteracoes.push(`Data de Emissão <dhEmi> alterada para ${novaData}`);
       }
-
-      // dhRecbto no protocolo
       const regexDhRecbto = /(<dhRecbto>)[^<]+(<\/dhRecbto>)/g;
       if (regexDhRecbto.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(
@@ -1196,7 +931,6 @@ function editarChavesCTe(
         );
       }
     }
-
     if (alteracoes.length === 0) {
       return {
         nomeArquivo: fileName,
@@ -1206,13 +940,12 @@ function editarChavesCTe(
         conteudoEditado: xmlContent,
       };
     }
-
     return {
       nomeArquivo: fileName,
       tipo: "CTe",
       sucesso: true,
       alteracoes,
-      conteudoEditado: xmlEditado, // Retorna o XML com alterações via regex
+      conteudoEditado: xmlEditado,
     };
   } catch (error) {
     return {
@@ -1225,10 +958,6 @@ function editarChavesCTe(
   }
 }
 
-/**
- * Edita as chaves de acesso em um evento de cancelamento usando APENAS manipulação de strings
- * NÃO reconstrói o XML - preserva 100% a estrutura original
- */
 function editarChavesCancelamento(
   xmlContent: string,
   fileName: string,
@@ -1237,87 +966,56 @@ function editarChavesCancelamento(
 ): ResultadoEdicao {
   const alteracoes: string[] = [];
   let xmlEditado = xmlContent;
-
   try {
-    const parser = new XMLParser({
-      ignoreAttributes: false,
-      attributeNamePrefix: "@_",
-      parseAttributeValue: false,
-      trimValues: false,
-    });
-
-    const parsed = parser.parse(xmlContent);
-
-    // Verifica se é um evento de cancelamento
-    if (!parsed.procEventoNFe) {
-      return {
-        nomeArquivo: fileName,
-        tipo: "Desconhecido",
-        sucesso: false,
-        alteracoes: [],
-        erro: "Não é um evento de cancelamento válido",
-      };
+    const regexChNFe = /<chNFe>([0-9]{44})<\/chNFe>/g;
+    const chavesEncontradas = new Set<string>();
+    let match;
+    while ((match = regexChNFe.exec(xmlContent)) !== null) {
+      chavesEncontradas.add(match[1]);
     }
-
-    // 1. Atualiza chNFe no evento (REGEX)
-    const infEvento = parsed.procEventoNFe?.evento?.infEvento;
-    if (infEvento?.chNFe) {
-      const chaveAntiga = infEvento.chNFe;
+    chavesEncontradas.forEach((chaveAntiga) => {
       if (chaveMapping[chaveAntiga]) {
         const novaChave = chaveMapping[chaveAntiga];
-
-        // Atualiza todas as ocorrências de chNFe (evento e retorno)
-        const regexChNFe = new RegExp(`(<chNFe>)${chaveAntiga}(</chNFe>)`, "g");
-
-        const ocorrencias = (xmlEditado.match(regexChNFe) || []).length;
+        const regexReplace = new RegExp(
+          `(<chNFe>)${chaveAntiga}(<\\/chNFe>)`,
+          "g"
+        );
+        const ocorrencias = (xmlEditado.match(regexReplace) || []).length;
         if (ocorrencias > 0) {
-          xmlEditado = xmlEditado.replace(regexChNFe, `$1${novaChave}$2`);
+          xmlEditado = xmlEditado.replace(regexReplace, `$1${novaChave}$2`);
           alteracoes.push(
             `chNFe alterado para nova chave em ${ocorrencias} local(is): ${novaChave}`
           );
         }
       }
-    }
-
-    // 2. Atualiza as datas (REGEX)
+    });
     if (novaData) {
       const novaDataFormatada = formatarDataParaXml(novaData);
-
-      // dhEvento no evento
       const regexDhEvento = /(<dhEvento>)[^<]+(<\/dhEvento>)/g;
       if (regexDhEvento.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(
           regexDhEvento,
           `$1${novaDataFormatada}$2`
         );
-        alteracoes.push(`Data do Evento <dhEvento> alterada para ${novaData}`);
+        alteracoes.push(`dhEvento alterado para ${novaData}`);
       }
-
-      // dhRecbto no retorno
       const regexDhRecbto = /(<dhRecbto>)[^<]+(<\/dhRecbto>)/g;
       if (regexDhRecbto.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(
           regexDhRecbto,
           `$1${novaDataFormatada}$2`
         );
-        alteracoes.push(
-          `Data de Recebimento <dhRecbto> alterada para ${novaData}`
-        );
+        alteracoes.push(`dhRecbto alterado para ${novaData}`);
       }
-
-      // dhRegEvento no retorno
       const regexDhRegEvento = /(<dhRegEvento>)[^<]+(<\/dhRegEvento>)/g;
       if (regexDhRegEvento.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(
           regexDhRegEvento,
           `$1${novaDataFormatada}$2`
         );
-        alteracoes.push(
-          `Data de Registro <dhRegEvento> alterada para ${novaData}`
-        );
+        alteracoes.push(`dhRegEvento alterado para ${novaData}`);
       }
     }
-
     if (alteracoes.length === 0) {
       return {
         nomeArquivo: fileName,
@@ -1327,13 +1025,12 @@ function editarChavesCancelamento(
         conteudoEditado: xmlContent,
       };
     }
-
     return {
       nomeArquivo: fileName,
       tipo: "Cancelamento",
       sucesso: true,
       alteracoes,
-      conteudoEditado: xmlEditado, // Retorna o XML com alterações via regex
+      conteudoEditado: xmlEditado,
     };
   } catch (error) {
     return {
@@ -1346,9 +1043,6 @@ function editarChavesCancelamento(
   }
 }
 
-/**
- * Detecta o tipo de documento XML e edita as chaves apropriadamente
- */
 export function editarChavesXml(
   xmlContent: string,
   fileName: string,
@@ -1366,8 +1060,10 @@ export function editarChavesXml(
   cstMappings: CstMappingData[] | null = null,
   taxReformRule: TaxReformRuleData | null = null
 ): ResultadoEdicao {
-  // Detecção rápida do tipo de documento
-  if (xmlContent.includes("<procEventoNFe")) {
+  if (
+    xmlContent.includes("<procEventoNFe") ||
+    xmlContent.includes("<envEvento")
+  ) {
     return editarChavesCancelamento(
       xmlContent,
       fileName,
@@ -1404,16 +1100,18 @@ export function editarChavesXml(
     xmlContent.includes("<procInutNFe") ||
     xmlContent.includes("<inutNFe")
   ) {
-    // Inutilizações não precisam de edição de chave (por enquanto)
-    return {
-      nomeArquivo: fileName,
-      tipo: "Inutilizacao",
-      sucesso: true,
-      alteracoes: ["Inutilização não requer alteração de chave"],
-      conteudoEditado: xmlContent,
-    };
+    // Delegar para o editor de inutilização, aplicando flags de cenário
+    return editarInutilizacao(xmlContent, fileName, {
+      alterarEmitente: !!novoEmitente,
+      novoEmitente,
+      alterarData: !!novaData,
+      novaData,
+      alterarCUF: !!novoUF,
+      novoCUF: novoUF,
+      alterarSerie: !!novaSerie,
+      novaSerie,
+    });
   }
-
   return {
     nomeArquivo: fileName,
     tipo: "Desconhecido",
@@ -1423,9 +1121,6 @@ export function editarChavesXml(
   };
 }
 
-/**
- * Edita as chaves de acesso em múltiplos arquivos XML
- */
 export function editarChavesEmLote(
   files: Array<{ name: string; content: string }>,
   chaveMapping: ChaveMapping,
@@ -1443,7 +1138,6 @@ export function editarChavesEmLote(
   taxReformRule: TaxReformRuleData | null = null
 ): ResultadoEdicao[] {
   const resultados: ResultadoEdicao[] = [];
-
   for (const file of files) {
     const resultado = editarChavesXml(
       file.content,
@@ -1462,6 +1156,5 @@ export function editarChavesEmLote(
     );
     resultados.push(resultado);
   }
-
   return resultados;
 }

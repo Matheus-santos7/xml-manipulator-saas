@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/app/lib/db";
-import { getCurrentUser } from "@/lib/auth-helper";
-import { requireAdmin, ensureAdmin } from "@/lib/rbac";
+import { getCurrentUser } from "@/lib/auth";
+import { requireAdmin, ensureAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 

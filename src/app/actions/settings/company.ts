@@ -3,9 +3,9 @@
 import { db } from "@/app/lib/db";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
-import { getCurrentUser } from "@/lib/auth-helper";
-import type { UpdateProfileInput } from "@/lib/scenario-types";
-import { logger } from "@/lib/logger";
+import { getCurrentUser } from "@/lib/auth";
+import type { UpdateProfileInput } from "@/lib/scenarios";
+import { logger } from "@/lib/logging";
 
 /**
  * Cria um novo profile de empresa no workspace do usuário autenticado.

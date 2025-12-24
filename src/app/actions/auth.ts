@@ -3,8 +3,8 @@
 import { redirect } from "next/navigation";
 import { db } from "@/app/lib/db";
 import bcrypt from "bcryptjs";
-import { createSession, endSession, getSession } from "@/lib/session";
-import { logger, logAuthEvent, createUserContext } from "@/lib/logger";
+import { createSession, endSession, getSession } from "@/lib/auth";
+import { logger, logAuthEvent, createUserContext } from "@/lib/logging";
 
 /**
  * Efetua o login do usuário a partir de email e senha.

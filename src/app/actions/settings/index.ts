@@ -15,7 +15,4 @@ export {
 export { saveScenario, deleteScenario } from "./scenario";
 
 // Re-exportar tipos para facilitar imports
-export type {
-  UpdateProfileInput,
-  SaveScenarioInput,
-} from "@/lib/scenario-types";
+export type { UpdateProfileInput, SaveScenarioInput } from "@/lib/scenarios";

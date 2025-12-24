@@ -1,11 +1,11 @@
 "use server";
 
 import { db } from "@/app/lib/db";
-import { getCurrentUser } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { revokeAllUserSessions, createSession } from "@/lib/session";
-import { logger } from "@/lib/logger";
+import { revokeAllUserSessions, createSession } from "@/lib/auth";
+import { logger } from "@/lib/logging";
 
 /**
  * Busca os dados básicos do usuário atualmente autenticado (nome, email e indicação de senha).

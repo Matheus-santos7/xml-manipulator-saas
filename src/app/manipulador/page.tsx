@@ -1,5 +1,5 @@
 import { db } from "@/app/lib/db";
-import { getCurrentUser } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import XmlProcessorClient from "@/components/xml-manipulator/processor-client";
 

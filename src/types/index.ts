@@ -113,6 +113,7 @@ export interface ScenarioProdutoDB {
   cEAN?: string | null;
   cProd?: string | null;
   NCM?: string | null;
+  origem?: string | null;
   isPrincipal: boolean;
   ordem: number;
 }

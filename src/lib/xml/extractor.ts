@@ -211,11 +211,30 @@ export function getEventoInfo(
     const parsed = parser.parse(xmlContent);
 
     // Verifica se é um evento de cancelamento
-    if (!parsed.procEventoNFe) {
+    // Suporta tanto <procEventoNFe> quanto <envEvento>
+    const procEvento = parsed.procEventoNFe;
+    const envEvento = parsed.envEvento;
+
+    if (!procEvento && !envEvento) {
       return null;
     }
 
-    const evento = parsed.procEventoNFe.evento;
+    // Extrai evento dependendo da estrutura
+    let evento;
+    if (procEvento) {
+      evento = procEvento.evento;
+      // Trata caso evento seja um array
+      if (Array.isArray(evento)) {
+        evento = evento[0];
+      }
+    } else if (envEvento) {
+      evento = envEvento.evento;
+      // Trata caso evento seja um array
+      if (Array.isArray(evento)) {
+        evento = evento[0];
+      }
+    }
+
     const infEvento = evento?.infEvento;
 
     if (!infEvento) return null;

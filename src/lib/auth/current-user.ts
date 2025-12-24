@@ -1,6 +1,7 @@
 import { db } from "@/app/lib/db";
 import { ROLES, getPermissions, type Role, type UserPermissions } from "./rbac";
 import { getAuthenticatedUserEmail } from "@/app/actions/auth";
+import { logger } from "@/lib/logging";
 
 export interface CurrentUser {
   id: string;
@@ -20,10 +21,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
     // Busca email do cookie de autenticação
     const userEmail = await getAuthenticatedUserEmail();
-    console.log("[auth-helper] userEmail from cookie:", userEmail);
+    logger.debug("User email retrieved from cookie", { userEmail });
 
     if (!userEmail) {
-      console.log("[auth-helper] No userEmail found, returning null");
+      logger.debug("No user email found in cookie");
       return null;
     }
 
@@ -34,14 +35,17 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       },
     });
 
-    console.log("[auth-helper] user found:", user?.id, user?.email);
+    logger.debug("User record retrieved", {
+      userId: user?.id,
+      userEmail: user?.email,
+    });
 
     if (!user) {
-      console.log("[auth-helper] No user found, returning null");
+      logger.debug("No user record found in database");
       return null;
     }
 
-    let workspaceMember = await db.workspaceMember.findFirst({
+    const workspaceMember = await db.workspaceMember.findFirst({
       include: {
         User: true,
         Workspace: true,
@@ -52,7 +56,9 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       },
     });
 
-    console.log("[auth-helper] workspaceMember:", workspaceMember?.id);
+    logger.debug("Workspace member retrieved", {
+      workspaceMemberId: workspaceMember?.id,
+    });
 
     // Se não tem workspace mas é admin do sistema, tenta encontrar qualquer workspace
     // ou cria um contexto de admin global (usando o primeiro workspace disponível)
@@ -99,7 +105,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       permissions,
     };
   } catch (error) {
-    console.error("Erro ao obter usuário atual:", error);
+    logger.error("Failed to get current user", { error });
     return null;
   }
 }

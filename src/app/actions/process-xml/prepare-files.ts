@@ -1,4 +1,4 @@
-import { processarRenomeacao } from "@/lib/xmlRenamer";
+import { processarRenomeacao } from "@/lib/xml";
 
 /**
  * Representa um arquivo XML em memória pronto para ser processado.

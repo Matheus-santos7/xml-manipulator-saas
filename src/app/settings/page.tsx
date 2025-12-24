@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScenarioEditor } from "@/components/settings/scenario-editor";
 import { ProfileForm } from "@/components/settings/profile-company-form";
 import { Building2, FileCog, Shield, Users } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { AUTH_COOKIE } from "@/lib/auth-constants";
+import { AUTH_COOKIE } from "@/lib/auth";
 
 // Rotas públicas que não precisam de autenticação
 const publicRoutes = ["/login"];
@@ -24,10 +24,13 @@ export function proxy(request: NextRequest) {
   }
 
   // Se está autenticado e tenta acessar página de login
-  if (isAuthenticated && pathname === "/login") {
-    const homeUrl = new URL("/manipulador", request.url);
-    return NextResponse.redirect(homeUrl);
-  }
+  // Importante: não redirecionar de /login apenas pela presença do cookie,
+  // pois o cookie pode estar inválido/expirado e isso causaria loop de redirect.
+  // A página /login fará a verificação real via getSession no servidor.
+  // if (isAuthenticated && pathname === "/login") {
+  //   const homeUrl = new URL("/manipulador", request.url);
+  //   return NextResponse.redirect(homeUrl);
+  // }
 
   // Redireciona raiz para manipulador se autenticado
   if (isAuthenticated && pathname === "/") {

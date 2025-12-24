@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth-helper";
+import { getCurrentUser } from "@/lib/auth";
 import { getUserProfile } from "@/app/actions/user-account";
 import { ProfileEditForm } from "@/components/settings/profile-user-form";
 import { Button } from "@/components/ui/button";

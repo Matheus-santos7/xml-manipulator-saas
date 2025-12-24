@@ -1,9 +1,9 @@
-import { getChaveInfoForMapping } from "@/lib/xmlExtractor";
 import {
+  getChaveInfoForMapping,
   prepararMapeamentosDeChaves,
   type DocumentoInfo,
   type ResultadoMapeamento,
-} from "@/lib/chaveHelper";
+} from "@/lib/xml";
 import type { ArquivoParaProcessamento } from "./prepare-files";
 
 /**

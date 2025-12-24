@@ -6,8 +6,8 @@
 import { db } from "@/app/lib/db";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
-import { AUTH_COOKIE, AUTH_COOKIE_OPTIONS } from "./auth-constants";
-import { logger, logAuthEvent } from "./logger";
+import { AUTH_COOKIE, AUTH_COOKIE_OPTIONS } from "./constants";
+import { logger, logAuthEvent } from "@/lib/logging";
 
 // Duração padrão da sessão (7 dias em milissegundos)
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
