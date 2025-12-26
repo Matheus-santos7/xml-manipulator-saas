@@ -1,4 +1,5 @@
 import type { ResultadoEdicao, DadosEmitente } from "./types";
+import { INUTILIZACAO_PATTERNS, IDENTIFICACAO_PATTERNS } from "./regexPatterns";
 
 export function editarInutilizacao(
   xmlContent: string,
@@ -45,7 +46,7 @@ export function editarInutilizacao(
   // 1) Atualiza CNPJ dentro de <infInut>
   if (alterarEmitente && novoEmitente?.CNPJ) {
     const cnpjNumerico = novoEmitente.CNPJ.replace(/\D/g, "");
-    const regexCnpj = /(<infInut[^>]*>[\s\S]*?)(<CNPJ>)[^<]+(<\/CNPJ>)/i;
+    const regexCnpj = INUTILIZACAO_PATTERNS.CNPJ_INF_INUT;
     if (regexCnpj.test(xmlEditado)) {
       xmlEditado = xmlEditado.replace(regexCnpj, `$1$2${cnpjNumerico}$3`);
       alteracoes.push("Inutilização: <CNPJ> alterado");
@@ -55,11 +56,11 @@ export function editarInutilizacao(
   // 2) Atualiza <ano> com base em novaData (YY)
   let anoNovo: string | null = null;
   if (alterarData && novaData) {
-    const m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(novaData);
+    const m = IDENTIFICACAO_PATTERNS.VALIDATE_DATE.exec(novaData);
     if (m) {
       const ano = m[3].slice(2);
       anoNovo = ano;
-      const regexAno = /(<infInut[^>]*>[\s\S]*?)(<ano>)[^<]+(<\/ano>)/i;
+      const regexAno = INUTILIZACAO_PATTERNS.ANO_INF_INUT;
       if (regexAno.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(regexAno, `$1$2${ano}$3`);
         alteracoes.push("Inutilização: <ano> alterado");
@@ -71,7 +72,7 @@ export function editarInutilizacao(
   let cUFNovo: string | null = null;
   if (alterarCUF && novoCUF) {
     cUFNovo = novoCUF.padStart(2, "0");
-    const regexCUF = /(<infInut[^>]*>[\s\S]*?)(<cUF>)[^<]+(<\/cUF>)/i;
+    const regexCUF = INUTILIZACAO_PATTERNS.CUF_INF_INUT;
     if (regexCUF.test(xmlEditado)) {
       xmlEditado = xmlEditado.replace(regexCUF, `$1$2${cUFNovo}$3`);
       alteracoes.push("Inutilização: <cUF> alterado");
@@ -82,7 +83,7 @@ export function editarInutilizacao(
   let serieNova: string | null = null;
   if (alterarSerie && novaSerie) {
     serieNova = novaSerie.padStart(3, "0");
-    const regexSerie = /(<infInut[^>]*>[\s\S]*?)(<serie>)[^<]+(<\/serie>)/i;
+    const regexSerie = INUTILIZACAO_PATTERNS.SERIE_INF_INUT;
     if (regexSerie.test(xmlEditado)) {
       xmlEditado = xmlEditado.replace(regexSerie, `$1$2${serieNova}$3`);
       alteracoes.push("Inutilização: <serie> alterada");
@@ -91,7 +92,7 @@ export function editarInutilizacao(
 
   // 5) Atualiza <dhRecbto>
   if (alterarData && novaData) {
-    const m = /^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/.exec(novaData);
+    const m = IDENTIFICACAO_PATTERNS.VALIDATE_DATE.exec(novaData);
     if (m) {
       const [_, dd, mm, yyyy] = m;
       const now = new Date();
@@ -99,7 +100,7 @@ export function editarInutilizacao(
       const min = String(now.getMinutes()).padStart(2, "0");
       const ss = String(now.getSeconds()).padStart(2, "0");
       const iso = `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}-03:00`;
-      const regexDhRecbto = /(<dhRecbto>)[^<]+(<\/dhRecbto>)/g;
+      const regexDhRecbto = IDENTIFICACAO_PATTERNS.DH_RECBTO;
       if (regexDhRecbto.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(regexDhRecbto, `$1${iso}$2`);
         alteracoes.push("Inutilização: <dhRecbto> alterado");
@@ -108,7 +109,7 @@ export function editarInutilizacao(
   }
 
   // 6) Recalcula o atributo Id de <infInut Id="..."></infInut>
-  const regexId = /(<infInut[^>]*\sId=\")[^"]+(\")/i;
+  const regexId = INUTILIZACAO_PATTERNS.ID_INF_INUT;
   const matchIdFull = xmlEditado.match(/<infInut[^>]*\sId=\"([^\"]+)\"/i);
   if (matchIdFull && matchIdFull[1].startsWith("ID")) {
     const idAtual = matchIdFull[1];

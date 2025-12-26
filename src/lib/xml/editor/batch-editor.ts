@@ -11,10 +11,9 @@ import type {
   DadosEmitente,
   DadosDestinatario,
   DadosProduto,
-  CstMappingData,
-  TaxReformRuleData,
   ResultadoEdicao,
 } from "./types";
+import type { CstMappingData, TaxReformRuleData } from "./taxes";
 
 /**
  * Edita as chaves de acesso em múltiplos arquivos XML

@@ -4,10 +4,9 @@ import type {
   DadosEmitente,
   DadosDestinatario,
   DadosProduto,
-  CstMappingData,
-  TaxReformRuleData,
   ResultadoEdicao,
 } from "./types";
+import type { CstMappingData, TaxReformRuleData } from "./taxes";
 
 export function editarNFe(
   xmlContent: string,
