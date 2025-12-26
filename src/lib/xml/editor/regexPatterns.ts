@@ -255,6 +255,36 @@ export const VALORES_PRODUTO_PATTERNS = {
 // ============================================================================
 
 /**
+ * Padrões para manipulação de impostos gerais
+ */
+export const IMPOSTO_PATTERNS = {
+  /** Padrão genérico para tags de imposto (pFCP, pICMS, pPIS, pCOFINS, pIPI, etc) */
+  createImpostoFieldRegex: (fieldName: string) =>
+    new RegExp(`(<${fieldName}>)[^<]+(<\\/${fieldName}>)`, "gi"),
+
+  /** Captura valor de tag de imposto */
+  getImpostoFieldValue: (fieldName: string) =>
+    new RegExp(`<${fieldName}>([^<]+)<\\/${fieldName}>`, "i"),
+
+  // Bases de cálculo
+  V_BC_ICMS: /<vBC>([^<]+)<\/vBC>/i,
+  V_BC_PIS: /<vBC>([^<]+)<\/vBC>/i,
+  V_BC_COFINS: /<vBC>([^<]+)<\/vBC>/i,
+
+  // Valores de impostos (dentro dos blocos específicos)
+  V_ICMS: /(<ICMS[^>]*>[\s\S]*?<vICMS>)[^<]+(<\/vICMS>)/i,
+  V_FCP: /(<vFCP>)[^<]+(<\/vFCP>)/gi,
+  V_PIS: /(<PIS[^>]*>[\s\S]*?<vPIS>)[^<]+(<\/vPIS>)/i,
+  V_COFINS: /(<COFINS[^>]*>[\s\S]*?<vCOFINS>)[^<]+(<\/vCOFINS>)/i,
+
+  // Totalizadores
+  V_ICMS_TOTAL: /(<ICMSTot[^>]*>[\s\S]*?<vICMS>)[^<]+(<\/vICMS>)/i,
+  V_FCP_TOTAL: /(<ICMSTot[^>]*>[\s\S]*?<vFCP>)[^<]+(<\/vFCP>)/i,
+  V_PIS_TOTAL: /(<ICMSTot[^>]*>[\s\S]*?<vPIS>)[^<]+(<\/vPIS>)/i,
+  V_COFINS_TOTAL: /(<ICMSTot[^>]*>[\s\S]*?<vCOFINS>)[^<]+(<\/vCOFINS>)/i,
+} as const;
+
+/**
  * Padrões para manipulação de IBS/CBS
  */
 export const REFORMA_TRIBUTARIA_PATTERNS = {

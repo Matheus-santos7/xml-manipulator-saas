@@ -17,6 +17,7 @@ import {
   IPI_PATTERNS,
   VALORES_PRODUTO_PATTERNS,
   REFORMA_TRIBUTARIA_PATTERNS,
+  IMPOSTO_PATTERNS,
 } from "./regexPatterns";
 
 // ============================================================================
@@ -44,6 +45,20 @@ export interface TaxReformRuleData {
   vDevTrib?: string | null; // Valor de devolução tributária
   cClassTrib?: string | null; // Código de classificação tributária
   CST?: string | null; // CST do IBS/CBS
+}
+
+/**
+ * Dados de impostos padrão para aplicar nos itens
+ */
+export interface ImpostosData {
+  tipoTributacao?: string | null; // TRIBUTADO ou NAO_TRIBUTADO
+  pFCP?: string | null; // Alíquota FCP
+  pICMS?: string | null; // Alíquota ICMS
+  pICMSUFDest?: string | null; // Alíquota ICMS UF Destino
+  pICMSInter?: string | null; // Alíquota ICMS Interestadual
+  pPIS?: string | null; // Alíquota PIS
+  pCOFINS?: string | null; // Alíquota COFINS
+  pIPI?: string | null; // Alíquota IPI
 }
 
 /**
@@ -666,6 +681,465 @@ export function aplicarReformaTributaria(
 }
 
 // ============================================================================
+// MANIPULAÇÃO DE IMPOSTOS GERAIS
+// ============================================================================
+
+/**
+ * Aplica valores de impostos em um bloco <det> do XML
+ * Similar à lógica do modelo.py - alterar_impostos
+ * @param detBlock - Conteúdo XML do bloco <det>
+ * @param impostosData - Dados de impostos a aplicar
+ * @param alteracoes - Array para registrar alterações
+ * @returns XML do bloco <det> modificado
+ */
+export function aplicarImpostosNoItem(
+  detBlock: string,
+  impostosData: ImpostosData,
+  alteracoes: string[]
+): string {
+  let detBlockEditado = detBlock;
+
+  // Aplica tipo de tributação se definido
+  if (impostosData.tipoTributacao) {
+    detBlockEditado = aplicarTipoTributacao(
+      detBlockEditado,
+      impostosData.tipoTributacao,
+      alteracoes
+    );
+  }
+
+  // Lista de campos de impostos que podem ser alterados
+  const camposImpostos: (keyof ImpostosData)[] = [
+    "pFCP",
+    "pICMS",
+    "pICMSUFDest",
+    "pICMSInter",
+    "pPIS",
+    "pCOFINS",
+    "pIPI",
+  ];
+
+  // Para cada campo de imposto definido nos dados
+  for (const campo of camposImpostos) {
+    const valor = impostosData[campo];
+
+    // Se o valor está definido (não é null/undefined)
+    if (valor !== null && valor !== undefined && valor !== "") {
+      // Cria regex para encontrar a tag dentro do bloco <imposto>
+      const regex = IMPOSTO_PATTERNS.createImpostoFieldRegex(campo);
+
+      // Verifica se a tag existe no bloco
+      if (regex.test(detBlockEditado)) {
+        // Substitui o valor da tag
+        detBlockEditado = detBlockEditado.replace(regex, `$1${valor}$2`);
+
+        // Registra a alteração apenas uma vez
+        const mensagem = `Imposto: <${campo}> alterado para ${valor}`;
+        if (!alteracoes.includes(mensagem)) {
+          alteracoes.push(mensagem);
+        }
+      }
+    }
+  }
+
+  return detBlockEditado;
+}
+
+/**
+ * Aplica o tipo de tributação (TRIBUTADO ou NAO_TRIBUTADO) alterando a estrutura do bloco ICMS
+ * TRIBUTADO = ICMS60 (ICMS cobrado anteriormente por ST)
+ * NAO_TRIBUTADO = ICMS00 (Tributação integral)
+ * @param detBlock - Conteúdo XML do bloco <det>
+ * @param tipoTributacao - Tipo de tributação: "TRIBUTADO" ou "NAO_TRIBUTADO"
+ * @param alteracoes - Array para registrar alterações
+ * @returns XML do bloco <det> modificado
+ */
+export function aplicarTipoTributacao(
+  detBlock: string,
+  tipoTributacao: string,
+  alteracoes: string[]
+): string {
+  let detBlockEditado = detBlock;
+
+  // Extrai o valor de <orig> do bloco ICMS atual
+  const origMatch = detBlock.match(/<ICMS\d{2}>\s*<orig>(\d)<\/orig>/i);
+  const origValor = origMatch ? origMatch[1] : "0";
+
+  // Extrai valores de base de cálculo e alíquotas se existirem (para ICMS00)
+  const vBCMatch = detBlock.match(/<vBC>([^<]+)<\/vBC>/i);
+  const pICMSMatch = detBlock.match(/<pICMS>([^<]+)<\/pICMS>/i);
+  const vICMSMatch = detBlock.match(/<vICMS>([^<]+)<\/vICMS>/i);
+
+  // Extrai valores de ST se existirem (para ICMS60)
+  const vBCSTRetMatch = detBlock.match(/<vBCSTRet>([^<]+)<\/vBCSTRet>/i);
+  const pSTMatch = detBlock.match(/<pST>([^<]+)<\/pST>/i);
+  const vICMSSTRetMatch = detBlock.match(/<vICMSSTRet>([^<]+)<\/vICMSSTRet>/i);
+  const vICMSSubstitutoMatch = detBlock.match(
+    /<vICMSSubstituto>([^<]+)<\/vICMSSubstituto>/i
+  );
+
+  // Regex para capturar todo o bloco ICMS interno (ICMS00, ICMS10, ICMS20, ICMS60, etc.)
+  const regexICMSInterno = /<ICMS\d{2}>[\s\S]*?<\/ICMS\d{2}>/i;
+
+  if (tipoTributacao === "TRIBUTADO") {
+    // Converter para ICMS60 (ST cobrada anteriormente)
+    const vBCSTRet = vBCSTRetMatch?.[1] || vBCMatch?.[1] || "0.00";
+    const pST = pSTMatch?.[1] || pICMSMatch?.[1] || "0.00";
+    const vICMSSTRet = vICMSSTRetMatch?.[1] || vICMSMatch?.[1] || "0.00";
+    const vICMSSubstituto = vICMSSubstitutoMatch?.[1] || "0.00";
+
+    const novoBloco = `<ICMS60>
+<orig>${origValor}</orig>
+<CST>60</CST>
+<vBCSTRet>${vBCSTRet}</vBCSTRet>
+<pST>${pST}</pST>
+<vICMSSubstituto>${vICMSSubstituto}</vICMSSubstituto>
+<vICMSSTRet>${vICMSSTRet}</vICMSSTRet>
+</ICMS60>`;
+
+    if (regexICMSInterno.test(detBlockEditado)) {
+      detBlockEditado = detBlockEditado.replace(regexICMSInterno, novoBloco);
+      alteracoes.push(
+        "ICMS alterado para ICMS60 (Tributado - ST cobrada anteriormente)"
+      );
+    }
+  } else if (tipoTributacao === "NAO_TRIBUTADO") {
+    // Converter para ICMS00 (Tributação integral)
+    const vBC = vBCMatch?.[1] || vBCSTRetMatch?.[1] || "0.00";
+    const pICMS = pICMSMatch?.[1] || pSTMatch?.[1] || "0.00";
+    const vICMS = vICMSMatch?.[1] || vICMSSTRetMatch?.[1] || "0.00";
+
+    const novoBloco = `<ICMS00>
+<orig>${origValor}</orig>
+<CST>00</CST>
+<modBC>3</modBC>
+<vBC>${vBC}</vBC>
+<pICMS>${pICMS}</pICMS>
+<vICMS>${vICMS}</vICMS>
+</ICMS00>`;
+
+    if (regexICMSInterno.test(detBlockEditado)) {
+      detBlockEditado = detBlockEditado.replace(regexICMSInterno, novoBloco);
+      alteracoes.push(
+        "ICMS alterado para ICMS00 (Não Tributado - Tributação integral)"
+      );
+    }
+  }
+
+  return detBlockEditado;
+}
+
+/**
+ * Recalcula valores de impostos em um bloco <det> com base nas alíquotas
+ * @param detBlock - Conteúdo XML do bloco <det>
+ * @param impostosData - Dados de impostos aplicados (para saber quais recalcular)
+ * @param alteracoes - Array para registrar alterações
+ * @returns XML do bloco <det> com valores recalculados
+ */
+export function recalcularValoresImpostosNoItem(
+  detBlock: string,
+  impostosData: ImpostosData,
+  alteracoes: string[]
+): string {
+  let detBlockEditado = detBlock;
+
+  // Extrai o valor do produto (base para cálculos)
+  const vProdMatch = detBlock.match(XML_TAGS.V_PROD);
+  if (!vProdMatch) return detBlock;
+
+  const vProd = parseFloat(vProdMatch[1]) || 0;
+
+  // Recalcula ICMS se a alíquota foi definida
+  if (impostosData.pICMS) {
+    const pICMS = parsePercent(impostosData.pICMS);
+    const vBC = vProd; // Simplificado: assume vBC = vProd
+    const vICMS = (vBC * pICMS) / 100;
+
+    // Atualiza vICMS no bloco
+    if (IMPOSTO_PATTERNS.V_ICMS.test(detBlockEditado)) {
+      detBlockEditado = detBlockEditado.replace(
+        IMPOSTO_PATTERNS.V_ICMS,
+        `$1${formatDecimal(vICMS)}$2`
+      );
+      alteracoes.push(
+        `Valor ICMS recalculado: ${formatDecimal(vICMS)} (base: ${formatDecimal(
+          vBC
+        )}, alíq: ${pICMS}%)`
+      );
+    }
+  }
+
+  // Recalcula PIS se a alíquota foi definida
+  if (impostosData.pPIS) {
+    const pPIS = parsePercent(impostosData.pPIS);
+    const vBC = vProd; // Simplificado: assume vBC = vProd
+    const vPIS = (vBC * pPIS) / 100;
+
+    // Atualiza vPIS no bloco
+    if (IMPOSTO_PATTERNS.V_PIS.test(detBlockEditado)) {
+      detBlockEditado = detBlockEditado.replace(
+        IMPOSTO_PATTERNS.V_PIS,
+        `$1${formatDecimal(vPIS)}$2`
+      );
+      alteracoes.push(
+        `Valor PIS recalculado: ${formatDecimal(vPIS)} (base: ${formatDecimal(
+          vBC
+        )}, alíq: ${pPIS}%)`
+      );
+    }
+  }
+
+  // Recalcula COFINS se a alíquota foi definida
+  if (impostosData.pCOFINS) {
+    const pCOFINS = parsePercent(impostosData.pCOFINS);
+    const vBC = vProd; // Simplificado: assume vBC = vProd
+    const vCOFINS = (vBC * pCOFINS) / 100;
+
+    // Atualiza vCOFINS no bloco
+    if (IMPOSTO_PATTERNS.V_COFINS.test(detBlockEditado)) {
+      detBlockEditado = detBlockEditado.replace(
+        IMPOSTO_PATTERNS.V_COFINS,
+        `$1${formatDecimal(vCOFINS)}$2`
+      );
+      alteracoes.push(
+        `Valor COFINS recalculado: ${formatDecimal(
+          vCOFINS
+        )} (base: ${formatDecimal(vBC)}, alíq: ${pCOFINS}%)`
+      );
+    }
+  }
+
+  // Recalcula FCP se a alíquota foi definida
+  if (impostosData.pFCP) {
+    const pFCP = parsePercent(impostosData.pFCP);
+    const vBC = vProd; // Simplificado: assume vBC = vProd
+    const vFCP = (vBC * pFCP) / 100;
+
+    // Atualiza vFCP no bloco
+    if (IMPOSTO_PATTERNS.V_FCP.test(detBlockEditado)) {
+      detBlockEditado = detBlockEditado.replace(
+        IMPOSTO_PATTERNS.V_FCP,
+        `$1${formatDecimal(vFCP)}$2`
+      );
+      alteracoes.push(
+        `Valor FCP recalculado: ${formatDecimal(vFCP)} (base: ${formatDecimal(
+          vBC
+        )}, alíq: ${pFCP}%)`
+      );
+    }
+  }
+
+  return detBlockEditado;
+}
+
+/**
+ * Recalcula os totais de impostos na nota fiscal
+ * @param xmlContent - Conteúdo completo do XML
+ * @param alteracoes - Array para registrar alterações
+ * @returns XML modificado
+ */
+export function recalcularTotaisImpostos(
+  xmlContent: string,
+  alteracoes: string[]
+): string {
+  let xmlEditado = xmlContent;
+
+  // Extrair todos os valores dos itens
+  const detBlocks = xmlContent.match(XML_STRUCTURE.DET_BLOCK);
+
+  if (!detBlocks || detBlocks.length === 0) {
+    return xmlContent;
+  }
+
+  let totalVProd = 0;
+  let totalVICMS = 0;
+  let totalVFCP = 0;
+  let totalVPIS = 0;
+  let totalVCOFINS = 0;
+  let totalVIPI = 0;
+  let totalVDesc = 0;
+  let totalVFrete = 0;
+  let totalVSeg = 0;
+  let totalVOutro = 0;
+
+  // Soma todos os valores dos itens
+  for (const detBlock of detBlocks) {
+    // vProd
+    const vProdMatch = detBlock.match(VALORES_PRODUTO_PATTERNS.V_PROD);
+    if (vProdMatch) {
+      totalVProd += parseFloat(vProdMatch[1]) || 0;
+    }
+
+    // vICMS (busca dentro do bloco ICMS)
+    const vICMSMatch = detBlock.match(/ICMS[\s\S]*?<vICMS>([^<]+)<\/vICMS>/);
+    if (vICMSMatch) {
+      totalVICMS += parseFloat(vICMSMatch[1]) || 0;
+    }
+
+    // vFCP
+    const vFCPMatch = detBlock.match(/<vFCP>([^<]+)<\/vFCP>/);
+    if (vFCPMatch) {
+      totalVFCP += parseFloat(vFCPMatch[1]) || 0;
+    }
+
+    // vPIS (busca dentro do bloco PIS)
+    const vPISMatch = detBlock.match(/PIS[\s\S]*?<vPIS>([^<]+)<\/vPIS>/);
+    if (vPISMatch) {
+      totalVPIS += parseFloat(vPISMatch[1]) || 0;
+    }
+
+    // vCOFINS (busca dentro do bloco COFINS)
+    const vCOFINSMatch = detBlock.match(
+      /COFINS[\s\S]*?<vCOFINS>([^<]+)<\/vCOFINS>/
+    );
+    if (vCOFINSMatch) {
+      totalVCOFINS += parseFloat(vCOFINSMatch[1]) || 0;
+    }
+
+    // vIPI
+    const vIPIMatch = detBlock.match(VALORES_PRODUTO_PATTERNS.V_IPI);
+    if (vIPIMatch) {
+      totalVIPI += parseFloat(vIPIMatch[1]) || 0;
+    }
+
+    // vDesc
+    const vDescMatch = detBlock.match(VALORES_PRODUTO_PATTERNS.V_DESC);
+    if (vDescMatch) {
+      totalVDesc += parseFloat(vDescMatch[1]) || 0;
+    }
+
+    // vFrete
+    const vFreteMatch = detBlock.match(VALORES_PRODUTO_PATTERNS.V_FRETE);
+    if (vFreteMatch) {
+      totalVFrete += parseFloat(vFreteMatch[1]) || 0;
+    }
+
+    // vSeg
+    const vSegMatch = detBlock.match(VALORES_PRODUTO_PATTERNS.V_SEG);
+    if (vSegMatch) {
+      totalVSeg += parseFloat(vSegMatch[1]) || 0;
+    }
+
+    // vOutro
+    const vOutroMatch = detBlock.match(VALORES_PRODUTO_PATTERNS.V_OUTRO);
+    if (vOutroMatch) {
+      totalVOutro += parseFloat(vOutroMatch[1]) || 0;
+    }
+  }
+
+  // Calcula o novo valor total da nota
+  const novoVNF =
+    totalVProd + totalVIPI + totalVFrete + totalVSeg + totalVOutro - totalVDesc;
+
+  // Atualiza vICMS no totalizador
+  if (IMPOSTO_PATTERNS.V_ICMS_TOTAL.test(xmlEditado)) {
+    xmlEditado = xmlEditado.replace(
+      IMPOSTO_PATTERNS.V_ICMS_TOTAL,
+      `$1${formatDecimal(totalVICMS)}$2`
+    );
+    alteracoes.push(`Total vICMS recalculado: ${formatDecimal(totalVICMS)}`);
+  }
+
+  // Atualiza vFCP no totalizador
+  if (IMPOSTO_PATTERNS.V_FCP_TOTAL.test(xmlEditado)) {
+    xmlEditado = xmlEditado.replace(
+      IMPOSTO_PATTERNS.V_FCP_TOTAL,
+      `$1${formatDecimal(totalVFCP)}$2`
+    );
+    alteracoes.push(`Total vFCP recalculado: ${formatDecimal(totalVFCP)}`);
+  }
+
+  // Atualiza vPIS no totalizador
+  if (IMPOSTO_PATTERNS.V_PIS_TOTAL.test(xmlEditado)) {
+    xmlEditado = xmlEditado.replace(
+      IMPOSTO_PATTERNS.V_PIS_TOTAL,
+      `$1${formatDecimal(totalVPIS)}$2`
+    );
+    alteracoes.push(`Total vPIS recalculado: ${formatDecimal(totalVPIS)}`);
+  }
+
+  // Atualiza vCOFINS no totalizador
+  if (IMPOSTO_PATTERNS.V_COFINS_TOTAL.test(xmlEditado)) {
+    xmlEditado = xmlEditado.replace(
+      IMPOSTO_PATTERNS.V_COFINS_TOTAL,
+      `$1${formatDecimal(totalVCOFINS)}$2`
+    );
+    alteracoes.push(
+      `Total vCOFINS recalculado: ${formatDecimal(totalVCOFINS)}`
+    );
+  }
+
+  // Atualiza vNF no totalizador
+  if (IPI_PATTERNS.V_NF_TOTAL.test(xmlEditado)) {
+    xmlEditado = xmlEditado.replace(
+      IPI_PATTERNS.V_NF_TOTAL,
+      `$1${formatDecimal(novoVNF)}$2`
+    );
+    alteracoes.push(`Total vNF recalculado: ${formatDecimal(novoVNF)}`);
+  }
+
+  return xmlEditado;
+}
+
+/**
+ * Aplica valores de impostos em todos os itens do XML
+ * @param xmlContent - Conteúdo completo do XML
+ * @param impostosData - Dados de impostos a aplicar
+ * @param alteracoes - Array para registrar alterações
+ * @returns XML modificado
+ */
+export function aplicarImpostosEmTodosItens(
+  xmlContent: string,
+  impostosData: ImpostosData,
+  alteracoes: string[]
+): string {
+  // Verifica se há algum valor de imposto definido
+  const temAlgumValor = Object.values(impostosData).some(
+    (valor) => valor !== null && valor !== undefined && valor !== ""
+  );
+
+  if (!temAlgumValor) {
+    return xmlContent;
+  }
+
+  let xmlEditado = xmlContent;
+
+  // Regex para encontrar todos os blocos <det>
+  const detBlocks = xmlContent.match(XML_STRUCTURE.DET_BLOCK);
+
+  if (!detBlocks || detBlocks.length === 0) {
+    return xmlContent;
+  }
+
+  for (const detBlock of detBlocks) {
+    let detBlockEditado = detBlock;
+
+    // 1. Aplica novas alíquotas
+    detBlockEditado = aplicarImpostosNoItem(
+      detBlockEditado,
+      impostosData,
+      alteracoes
+    );
+
+    // 2. Recalcula valores monetários baseados nas novas alíquotas
+    detBlockEditado = recalcularValoresImpostosNoItem(
+      detBlockEditado,
+      impostosData,
+      alteracoes
+    );
+
+    if (detBlockEditado !== detBlock) {
+      xmlEditado = xmlEditado.replace(detBlock, detBlockEditado);
+    }
+  }
+
+  // 3. Recalcula totais da nota
+  xmlEditado = recalcularTotaisImpostos(xmlEditado, alteracoes);
+
+  return xmlEditado;
+}
+
+// ============================================================================
 // FUNÇÃO PRINCIPAL - PROCESSAR IMPOSTOS
 // ============================================================================
 
@@ -683,12 +1157,22 @@ export function processarImpostos(
     taxReformRule?: TaxReformRuleData | null;
     zerarIpiRemessaRetorno?: boolean;
     zerarIpiVenda?: boolean;
+    impostosData?: ImpostosData | null;
   },
   alteracoes: string[]
 ): string {
   let xmlEditado = xmlContent;
 
-  // 1. Aplica mapeamento de CST
+  // 1. Aplica valores de impostos gerais (pFCP, pICMS, pPIS, pCOFINS, pIPI, etc)
+  if (opcoes.impostosData) {
+    xmlEditado = aplicarImpostosEmTodosItens(
+      xmlEditado,
+      opcoes.impostosData,
+      alteracoes
+    );
+  }
+
+  // 2. Aplica mapeamento de CST
   if (opcoes.cstMappings && opcoes.cstMappings.length > 0) {
     xmlEditado = aplicarCstEmTodosItens(
       xmlEditado,
@@ -697,7 +1181,7 @@ export function processarImpostos(
     );
   }
 
-  // 2. Zera IPI conforme regras
+  // 3. Zera IPI conforme regras
   if (opcoes.zerarIpiRemessaRetorno || opcoes.zerarIpiVenda) {
     xmlEditado = zerarIpiEmTodosItens(
       xmlEditado,
@@ -706,11 +1190,11 @@ export function processarImpostos(
       alteracoes
     );
 
-    // 3. Recalcula totais de IPI
+    // 4. Recalcula totais de IPI
     xmlEditado = recalcularTotaisIpi(xmlEditado, alteracoes);
   }
 
-  // 4. Aplica Reforma Tributária (IBS/CBS)
+  // 5. Aplica Reforma Tributária (IBS/CBS)
   if (
     opcoes.taxReformRule &&
     (opcoes.taxReformRule.pIBSUF ||

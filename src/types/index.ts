@@ -121,6 +121,7 @@ export interface ScenarioProdutoDB {
 export interface ScenarioImpostoDB {
   id: string;
   scenarioId: string;
+  tipoTributacao?: string | null;
   pFCP?: string | null;
   pICMS?: string | null;
   pICMSUFDest?: string | null;

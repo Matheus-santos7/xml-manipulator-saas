@@ -84,6 +84,7 @@ export const produtoSchema = z.object({
  * Schema de validação para impostos padrão de um cenário.
  */
 export const impostoSchema = z.object({
+  tipoTributacao: z.string().optional().nullable(), // TRIBUTADO ou NAO_TRIBUTADO
   pFCP: z.string().optional().nullable(),
   pICMS: z.string().optional().nullable(),
   pICMSUFDest: z.string().optional().nullable(),

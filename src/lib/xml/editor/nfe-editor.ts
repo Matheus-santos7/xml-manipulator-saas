@@ -6,7 +6,7 @@ import type {
   DadosProduto,
   ResultadoEdicao,
 } from "./types";
-import type { CstMappingData, TaxReformRuleData } from "./taxes";
+import type { CstMappingData, TaxReformRuleData, ImpostosData } from "./taxes";
 
 export function editarNFe(
   xmlContent: string,
@@ -25,6 +25,7 @@ export function editarNFe(
     > | null;
     cstMappings?: CstMappingData[] | null;
     taxReformRule?: TaxReformRuleData | null;
+    impostosData?: ImpostosData | null;
   }
 ): ResultadoEdicao {
   if (!xmlContent.includes("<nfeProc") && !xmlContent.includes("<NFe")) {
@@ -49,6 +50,7 @@ export function editarNFe(
     produtos = null,
     cstMappings = null,
     taxReformRule = null,
+    impostosData = null,
   } = params;
 
   return editarChavesXml(
@@ -64,6 +66,7 @@ export function editarNFe(
     novoDestinatario,
     produtos,
     cstMappings,
-    taxReformRule
+    taxReformRule,
+    impostosData
   );
 }

@@ -24,6 +24,7 @@ export function editarArquivosEAtualizarReferencias(args: {
     editar_destinatario_pj: boolean;
     editar_destinatario_pf: boolean;
     editar_produtos: boolean;
+    editar_impostos: boolean;
     editar_cst: boolean;
     reforma_tributaria: boolean;
     editar_data: boolean;
@@ -67,6 +68,16 @@ export function editarArquivosEAtualizarReferencias(args: {
       isPrincipal: boolean;
       ordem: number;
     }> | null;
+    ScenarioImposto?: {
+      tipoTributacao?: string | null;
+      pFCP?: string | null;
+      pICMS?: string | null;
+      pICMSUFDest?: string | null;
+      pICMSInter?: string | null;
+      pPIS?: string | null;
+      pCOFINS?: string | null;
+      pIPI?: string | null;
+    } | null;
     CstMapping?: Array<{
       tipoOperacao: string;
       icms: string | null;
@@ -196,6 +207,20 @@ export function editarArquivosEAtualizarReferencias(args: {
         }
       : null;
 
+  const impostosData =
+    scenario.editar_impostos && scenario.ScenarioImposto
+      ? {
+          tipoTributacao: scenario.ScenarioImposto.tipoTributacao || undefined,
+          pFCP: scenario.ScenarioImposto.pFCP || undefined,
+          pICMS: scenario.ScenarioImposto.pICMS || undefined,
+          pICMSUFDest: scenario.ScenarioImposto.pICMSUFDest || undefined,
+          pICMSInter: scenario.ScenarioImposto.pICMSInter || undefined,
+          pPIS: scenario.ScenarioImposto.pPIS || undefined,
+          pCOFINS: scenario.ScenarioImposto.pCOFINS || undefined,
+          pIPI: scenario.ScenarioImposto.pIPI || undefined,
+        }
+      : null;
+
   const resultadosEdicao = editarChavesEmLote(
     filesForProcessing,
     chaveMapping,
@@ -208,7 +233,8 @@ export function editarArquivosEAtualizarReferencias(args: {
     novoDestinatario,
     produtos,
     cstMappings,
-    taxReformRule
+    taxReformRule,
+    impostosData
   );
 
   let totalEditados = 0;

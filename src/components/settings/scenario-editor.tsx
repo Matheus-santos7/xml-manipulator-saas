@@ -123,6 +123,7 @@ const produtoSchema = z.object({
 });
 
 const impostosSchema = z.object({
+  tipoTributacao: z.string().optional(),
   pFCP: z.string().optional(),
   pICMS: z.string().optional(),
   pICMSUFDest: z.string().optional(),
@@ -303,6 +304,7 @@ export function ScenarioEditor({
       if (!data) return {};
       const d = data as Record<string, unknown>;
       return {
+        tipoTributacao: str(d.tipoTributacao),
         pFCP: str(d.pFCP),
         pICMS: str(d.pICMS),
         pICMSUFDest: str(d.pICMSUFDest),
@@ -2092,6 +2094,33 @@ export function ScenarioEditor({
 
                     {watchEditarImpostos && (
                       <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="impostosData.tipoTributacao"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo de Tributação</FormLabel>
+                              <Select
+                                value={field.value || ""}
+                                onValueChange={field.onChange}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione..." />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="TRIBUTADO">
+                                    Tributado (ICMS60)
+                                  </SelectItem>
+                                  <SelectItem value="NAO_TRIBUTADO">
+                                    Não Tributado (ICMS00)
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
                         <FormField
                           control={form.control}
                           name="impostosData.pICMS"

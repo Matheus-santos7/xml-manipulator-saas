@@ -121,16 +121,17 @@ model ScenarioEmitente {
 }
 
 model ScenarioImposto {
-  id          String   @id @default(cuid())
-  scenarioId  String   @unique
-  pFCP        String?
-  pICMS       String?
-  pICMSUFDest String?
-  pICMSInter  String?
-  pPIS        String?
-  pCOFINS     String?
-  pIPI        String?
-  Scenario    Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  scenarioId       String   @unique
+  tipoTributacao   String?  // TRIBUTADO, NAO_TRIBUTADO
+  pFCP             String?
+  pICMS            String?
+  pICMSUFDest      String?
+  pICMSInter       String?
+  pPIS             String?
+  pCOFINS          String?
+  pIPI             String?
+  Scenario         Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 }
 
 model ScenarioProduto {

@@ -13,7 +13,7 @@ import type {
   DadosProduto,
   ResultadoEdicao,
 } from "./types";
-import type { CstMappingData, TaxReformRuleData } from "./taxes";
+import type { CstMappingData, TaxReformRuleData, ImpostosData } from "./taxes";
 
 /**
  * Edita as chaves de acesso em múltiplos arquivos XML
@@ -22,6 +22,7 @@ import type { CstMappingData, TaxReformRuleData } from "./taxes";
  * - Mapeamentos de chaves
  * - Referências entre notas
  * - Alterações de emitente/destinatário
+ * - Impostos padrão
  * - Regras de CST por tipo de operação
  * - Reforma tributária (IBS/CBS)
  */
@@ -39,7 +40,8 @@ export function editarChavesEmLote(
     DadosProduto & { isPrincipal: boolean; ordem: number }
   > | null = null,
   cstMappings: CstMappingData[] | null = null,
-  taxReformRule: TaxReformRuleData | null = null
+  taxReformRule: TaxReformRuleData | null = null,
+  impostosData: ImpostosData | null = null
 ): ResultadoEdicao[] {
   const resultados: ResultadoEdicao[] = [];
 
@@ -57,7 +59,8 @@ export function editarChavesEmLote(
       novoDestinatario,
       produtos,
       cstMappings,
-      taxReformRule
+      taxReformRule,
+      impostosData
     );
     resultados.push(resultado);
   }

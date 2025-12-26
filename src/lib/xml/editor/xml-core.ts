@@ -16,6 +16,7 @@ import {
   processarImpostos,
   type CstMappingData,
   type TaxReformRuleData,
+  type ImpostosData,
 } from "./taxes";
 import {
   CHAVE_PATTERNS,
@@ -127,7 +128,8 @@ function editarChavesNFe(
     DadosProduto & { isPrincipal: boolean; ordem: number }
   > | null = null,
   cstMappings: CstMappingData[] | null = null,
-  taxReformRule: TaxReformRuleData | null = null
+  taxReformRule: TaxReformRuleData | null = null,
+  impostosData: ImpostosData | null = null
 ): ResultadoEdicao {
   const alteracoes: string[] = [];
   let xmlEditado = xmlContent;
@@ -388,6 +390,7 @@ function editarChavesNFe(
       {
         cstMappings,
         taxReformRule,
+        impostosData,
       },
       alteracoes
     );
@@ -783,7 +786,8 @@ export function editarChavesXml(
     DadosProduto & { isPrincipal: boolean; ordem: number }
   > | null = null,
   cstMappings: CstMappingData[] | null = null,
-  taxReformRule: TaxReformRuleData | null = null
+  taxReformRule: TaxReformRuleData | null = null,
+  impostosData: ImpostosData | null = null
 ): ResultadoEdicao {
   if (
     xmlContent.includes("<procEventoNFe") ||
@@ -819,7 +823,8 @@ export function editarChavesXml(
       novoDestinatario,
       produtos,
       cstMappings,
-      taxReformRule
+      taxReformRule,
+      impostosData
     );
   } else if (
     xmlContent.includes("<procInutNFe") ||
