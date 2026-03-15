@@ -25,8 +25,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import ProfileEditDialog from "@/components/profile/user-edit-dialog";
-import { useState } from "react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 
@@ -41,31 +39,31 @@ export function Sidebar({ userEmail, userName, isAdmin }: SidebarProps) {
 
   const routes = [
     {
-      href: "/manipulador",
-      label: "Manipulador XML",
+      href: "/xml-manipulator",
+      label: "Manipulador de XML",
       icon: FileCode,
-      active: pathname.includes("/manipulador"),
+      active: pathname.includes("/xml-manipulator"),
       visible: true,
     },
     {
       href: "/settings",
       label: "Configurações",
       icon: Settings,
-      active: pathname.includes("/settings") && !pathname.includes("/users"),
+      active: pathname === "/settings",
       visible: true,
     },
     {
-      href: "/settings/users",
-      label: "Gerenciar Usuários",
-      icon: Users,
-      active: pathname.includes("/users"),
-      visible: isAdmin,
+      href: "/settings/account",
+      label: "Meu perfil",
+      icon: User,
+      active: pathname.startsWith("/settings/account"),
+      visible: true,
     },
     {
-      href: "/divergences",
-      label: "Divergências",
-      icon: FileCog,
-      active: pathname.includes("/divergences"),
+      href: "/settings/members",
+      label: "Gerenciar Usuários",
+      icon: Users,
+      active: pathname.startsWith("/settings/members"),
       visible: isAdmin,
     },
   ];
@@ -87,8 +85,6 @@ export function Sidebar({ userEmail, userName, isAdmin }: SidebarProps) {
         .toUpperCase()
         .substring(0, 2)
     : userEmail.substring(0, 2).toUpperCase();
-
-  const [profileOpen, setProfileOpen] = useState(false);
 
   return (
     <div className="flex h-full max-h-screen flex-col gap-2">
@@ -194,9 +190,11 @@ export function Sidebar({ userEmail, userName, isAdmin }: SidebarProps) {
             side="top"
             className="w-[--radix-popper-anchor-width] min-w-60"
           >
-            <DropdownMenuItem onSelect={() => setProfileOpen(true)}>
-              <UserCog className="mr-2 h-4 w-4" />
-              Editar Perfil
+            <DropdownMenuItem asChild>
+              <Link href="/settings/account">
+                <UserCog className="mr-2 h-4 w-4" />
+                Minha conta
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -208,12 +206,6 @@ export function Sidebar({ userEmail, userName, isAdmin }: SidebarProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <ProfileEditDialog
-          open={profileOpen}
-          onOpenChange={(v) => setProfileOpen(v)}
-          initialEmail={userEmail}
-        />
       </div>
     </div>
   );

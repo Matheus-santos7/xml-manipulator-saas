@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
         {
           headers: {
             Accept: "application/json",
+            "User-Agent": "XmlManipulatorSaaS/1.0 (https://github.com; app consulta CNPJ)",
           },
         }
       );
@@ -75,8 +76,20 @@ export async function GET(request: NextRequest) {
         data = await response.json();
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.log("BrasilAPI error:", response.status, errorData);
+        // 403 é comum (Cloudflare/rate limit); evita poluir o log e usa fallback
+        if (response.status !== 403) {
+          console.warn("BrasilAPI error:", response.status, errorData);
+        }
 
+        // CNPJ sintaticamente inválido ou requisição ruim: repassa erro ao cliente
+        if (response.status === 400 && errorData?.message) {
+          return NextResponse.json(
+            { error: errorData.message },
+            { status: 400 }
+          );
+        }
+
+        // CNPJ não encontrado
         if (
           response.status === 404 ||
           errorData?.message?.includes("não encontrado")

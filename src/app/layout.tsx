@@ -10,7 +10,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SaaS XML Manipulator",
+  title: "SaaS Manipulador de XML",
   description: "Manipulador fiscal de XMLs",
 };
 

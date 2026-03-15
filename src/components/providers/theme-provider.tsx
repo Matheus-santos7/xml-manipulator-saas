@@ -94,19 +94,18 @@ export function ThemeProvider({
   // Marca como montado após a primeira renderização
   // e sincroniza o localStorage com o valor do servidor
   useEffect(() => {
-    setMounted(true);
-    // Sincroniza o localStorage com o valor inicial do servidor
+    const id = requestAnimationFrame(() => setMounted(true));
     if (typeof window !== "undefined") {
       localStorage.setItem(`${storageKey}-role`, defaultRoleTheme);
     }
+    return () => cancelAnimationFrame(id);
   }, [defaultRoleTheme, storageKey]);
 
   // Sincroniza o roleTheme quando o valor do servidor mudar (ex: login de outro usuário)
   useEffect(() => {
     if (defaultRoleTheme !== serverRoleThemeRef.current) {
       serverRoleThemeRef.current = defaultRoleTheme;
-      setRoleThemeState(defaultRoleTheme);
-      // Também atualiza o localStorage para manter consistência
+      queueMicrotask(() => setRoleThemeState(defaultRoleTheme));
       if (typeof window !== "undefined") {
         localStorage.setItem(`${storageKey}-role`, defaultRoleTheme);
       }

@@ -49,7 +49,6 @@ model Profile {
   Workspace           Workspace         @relation(fields: [workspaceId], references: [id])
   Scenario            Scenario[]
   WorkspaceMember     WorkspaceMember[]
-  DivergenceSummaries DivergenceSummary[]
 }
 
 model Scenario {
@@ -209,26 +208,6 @@ model WorkspaceMember {
   Workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
   @@unique([workspaceId, userId])
-}
-
-model DivergenceSummary {
-  id        String          @id @default(cuid())
-  createdAt DateTime        @default(now())
-  totalErp  Int
-  totalMl   Int
-  diferenca Int
-  deletedAt DateTime?       // Soft delete - data de exclusão
-  notes     DivergentNote[]
-  profileId String? // Adiciona a referência ao Profile
-  Profile   Profile?  @relation(fields: [profileId], references: [id]) // Adiciona a relação
-}
-
-model DivergentNote {
-  id                 String            @id @default(cuid())
-  summaryId          String
-  nfKey              String            @unique
-  status_conciliacao String
-  summary            DivergenceSummary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
 }
 
 // Destinatários disponíveis para seleção nos cenários

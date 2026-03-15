@@ -4,6 +4,9 @@ Visão geral e arquitetura de alto nível do projeto **xml-manipulator-saas**.
 
 **Objetivo:** plataforma web para processar lote de arquivos XML fiscais (NFe/CTe), aplicar cenários de transformação (regras fiscais, renomeação, alteração de dados) e entregar pacotes processados ao usuário.
 
+**Estrutura do projeto (arquitetura limpa):**  
+📖 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) — estrutura de pastas, convenções e fluxo de dependências (`app/`, `components/`, `lib/`, `types/`, `proxy.ts`).
+
 **Stack principal:**
 
 - Frontend/Server: `Next.js` (App Router / `src/app`)
@@ -13,8 +16,8 @@ Visão geral e arquitetura de alto nível do projeto **xml-manipulator-saas**.
 
 **Pontos de entrada (arquitetura):**
 
-- UI (client): `src/components/xml-manipulator/processor-client.tsx` — componente responsável por upload, seleção de cenário, disparo do processamento e download do ZIP.
-- UI (admin/settings): `src/components/settings/scenario-editor.tsx` — criação/edição de cenários que geram regras aplicadas aos processadores.
+- UI (client): `src/app/xml-manipulator/_components/XmlProcessorClient.tsx` — componente responsável por upload, seleção de cenário, disparo do processamento e download do ZIP.
+- UI (admin/settings): `src/app/settings/_components/ScenarioEditor.tsx` — criação/edição de cenários que geram regras aplicadas aos processadores.
 - Server Actions (Next.js app actions):
   - `src/app/actions/process-batch.ts` — entrada principal de processamento em server-side (recebe FormData com arquivos + cenárioId).
   - `src/app/actions/settings.ts` — endpoints para salvar perfis e cenários no banco (utilizados pelo editor de cenários).
@@ -27,8 +30,8 @@ Visão geral e arquitetura de alto nível do projeto **xml-manipulator-saas**.
 - `package.json` — dependências e scripts (`dev`, `build`, `start`).
 - `src/app/layout.tsx` — layout global e pontos de navegação.
 - `src/app/page.tsx` — página inicial.
-- `src/components/xml-manipulator/processor-client.tsx` — UI de processamento (drag/drop, botões, download ZIP).
-- `src/components/settings/scenario-editor.tsx` — editor de cenários (client).
+- `src/app/xml-manipulator/_components/XmlProcessorClient.tsx` — UI de processamento (drag/drop, botões, download ZIP).
+- `src/app/settings/_components/ScenarioEditor.tsx` — editor de cenários (client).
 - `src/app/actions/process-batch.ts` — ação server que processa lote via `XmlProcessor`.
 - `src/app/actions/settings.ts` — ações para salvar cenários e perfis no banco.
 - `src/app/lib/xml/*` — `XmlProcessor.ts`, `XmlHelper.ts`, `nfeHandler.ts`, `renaming.ts`, etc.
@@ -39,8 +42,8 @@ Visão geral e arquitetura de alto nível do projeto **xml-manipulator-saas**.
 ```mermaid
 flowchart TD
   subgraph UI
-    A[XmlProcessorClient<br/>(/dashboard/manipulador)]
-    B[ScenarioEditor<br/>(/dashboard/configuracoes)]
+  A[XmlProcessorClient<br/>(/xml-manipulator)]
+  B[ScenarioEditor<br/>(/settings)]
   end
 
   subgraph Server
@@ -178,11 +181,11 @@ Variáveis de ambiente recomendadas:
 
 **Onde procurar para entender o fluxo no código**
 
-- `src/components/xml-manipulator/processor-client.tsx` — UI + trigger de processamento
+- `src/app/xml-manipulator/_components/XmlProcessorClient.tsx` — UI + trigger de processamento
 - `src/app/actions/process-batch.ts` — lógica de orquestração do processamento
 - `src/app/lib/xml/XmlProcessor.ts` — aplicar cenários e handlers
 - `src/app/lib/xml/XmlHelper.ts` — parsing/serialização/utilitários XML
-- `src/components/settings/scenario-editor.tsx` & `src/app/actions/settings.ts` — criação/edição de cenários
+- `src/app/settings/_components/ScenarioEditor.tsx` & `src/app/actions/scenario/index.ts` — criação/edição de cenários
 
 ---
 

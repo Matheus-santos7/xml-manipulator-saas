@@ -1,64 +1,114 @@
-import { db } from "@/app/lib/db";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ScenarioEditor } from "@/components/settings/scenario-editor";
-import { ProfileForm } from "@/components/settings/profile-company-form";
-import { Building2, FileCog, Shield, Users } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import React, { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import type { ScenarioWithRelations } from "@/lib/scenarios/types";
+import type { UserPermissions } from "@/lib/auth/rbac";
+import { SettingsHeader } from "./_components/SettingsHeader";
+import { ProfilesCard } from "./_components/ProfilesCard";
+import { ScenariosCard } from "./_components/ScenariosCard";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { FileCog } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 // Definimos o tipo como uma Promise (Next.js 15+)
 type SearchParams = Promise<{ profileId?: string }>;
 
-export default async function SettingsPage(props: {
+interface SettingsPageProps {
   searchParams: SearchParams;
-}) {
-  // 1. Aguardamos a resolução dos parâmetros
-  const searchParams = await props.searchParams;
+}
 
-  // 2. Obter usuário atual e verificar permissões
-  const currentUser = await getCurrentUser();
+async function ScenariosSection({
+  profileId,
+  profileName,
+  permissions,
+}: {
+  profileId: string | undefined;
+  profileName: string | null | undefined;
+  permissions: UserPermissions;
+}) {
+  const scenarios: ScenarioWithRelations[] = profileId
+    ? await db.scenario.findMany({
+        where: { profileId, deletedAt: null },
+        orderBy: { name: "asc" },
+        include: {
+          ScenarioEmitente: true,
+          ScenarioDestinatario: true,
+          ScenarioProduto: true,
+          ScenarioImposto: true,
+          CstMapping: true,
+          TaxReformRule: true,
+        },
+      })
+    : [];
+
+  return (
+    <ScenariosCard
+      scenarios={scenarios}
+      selectedProfileId={profileId}
+      selectedProfileName={profileName}
+      permissions={permissions}
+    />
+  );
+}
+
+function ScenariosSkeleton({
+  colSpan = "md:col-span-8",
+}: {
+  colSpan?: string;
+}) {
+  return (
+    <div className={`${colSpan} flex flex-col`}>
+      <Card className="h-full flex flex-col animate-pulse">
+        <CardHeader>
+          <div className="h-6 w-48 bg-muted rounded" />
+          <div className="h-4 w-64 bg-muted rounded mt-2" />
+        </CardHeader>
+        <CardContent className="flex-1 bg-muted/30 p-6">
+          <div className="flex flex-col items-center justify-center min-h-[200px] gap-3">
+            <FileCog className="h-12 w-12 text-muted-foreground/30" />
+            <div className="h-4 w-48 bg-muted rounded" />
+            <div className="h-3 w-36 bg-muted rounded" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default async function SettingsPage(
+  props: SettingsPageProps,
+): Promise<React.ReactElement> {
+  const [searchParams, currentUser] = await Promise.all([
+    props.searchParams,
+    getCurrentUser(),
+  ]);
 
   if (!currentUser) {
-    // TODO: Redirecionar para login quando autenticação estiver implementada
     redirect("/");
   }
 
   const { permissions, role, profileId: userProfileId } = currentUser;
 
-  // 3. Busca profiles baseado nas permissões
   let profiles;
   if (permissions.canViewProfiles) {
-    // Admin vê todos os profiles não deletados
     profiles = await db.profile.findMany({
       where: { deletedAt: null },
     });
   } else {
-    // Member vê apenas seu profile
     if (!userProfileId) {
       return (
         <div className="container mx-auto py-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
-                <Shield className="h-5 w-5" /> Acesso Negado
-              </CardTitle>
-              <CardDescription>
-                Você não possui um perfil de empresa associado. Entre em contato
-                com o administrador.
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-6">
+            <h1 className="text-lg font-semibold text-destructive flex items-center gap-2">
+              Acesso Negado
+            </h1>
+            <p className="text-sm text-destructive/90 mt-2">
+              Você não possui um perfil de empresa associado. Entre em contato com o
+              administrador.
+            </p>
+          </div>
         </div>
       );
     }
@@ -73,251 +123,34 @@ export default async function SettingsPage(props: {
     profiles = userProfile ? [userProfile] : [];
   }
 
-  // 4. Define o profile selecionado
   let selectedProfileId = searchParams.profileId || profiles[0]?.id;
 
-  // 5. Verifica se o membro tem acesso ao profile selecionado
   if (role === "member" && selectedProfileId !== userProfileId) {
     selectedProfileId = userProfileId!;
   }
 
   const selectedProfile = profiles.find((p) => p.id === selectedProfileId);
 
-  // 6. Busca cenários do profile selecionado (não deletados)
-  const scenarios = selectedProfileId
-    ? await db.scenario.findMany({
-        where: {
-          profileId: selectedProfileId,
-          deletedAt: null,
-        },
-        orderBy: { name: "asc" },
-        include: {
-          ScenarioEmitente: true,
-          ScenarioDestinatario: true,
-          ScenarioProduto: true,
-          ScenarioImposto: true,
-          CstMapping: true,
-          TaxReformRule: true,
-        },
-      })
-    : [];
-
   return (
     <div className="container mx-auto py-8 h-[calc(100vh-4rem)]">
-      {/* Header com Badge e Botão de Gerenciar Usuários */}
-      <div className="mb-4 flex justify-between items-center">
-        <div>
-          {role === "admin" && (
-            <Button variant="outline" asChild>
-              <Link href="/settings/users">
-                <Users className="h-4 w-4 mr-2" />
-                Gerenciar Usuários
-              </Link>
-            </Button>
-          )}
-        </div>
-        <Badge
-          variant="outline"
-          className={
-            role === "admin"
-              ? "border-role-admin text-role-admin bg-role-admin/10"
-              : "border-role-member text-role-member bg-role-member/10"
-          }
-        >
-          <Shield className="h-3 w-3 mr-1" />
-          {role === "admin" ? "Administrador" : "Usuário"}
-        </Badge>
-      </div>
+      <SettingsHeader role={role} />
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-full">
-        {/* --- COLUNA ESQUERDA: LISTA DE EMPRESAS (apenas para admin) --- */}
         {permissions.canViewProfiles && (
-          <div className="md:col-span-4 flex flex-col gap-4">
-            <Card className="h-full flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" /> Empresas
-                </CardTitle>
-                <CardDescription>
-                  Selecione para ver os cenários
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto space-y-2">
-                <ProfileForm
-                  profiles={profiles}
-                  selectedProfileId={selectedProfileId}
-                  canManage={permissions.canManageProfiles}
-                />
-              </CardContent>
-            </Card>
-          </div>
+          <ProfilesCard
+            profiles={profiles}
+            selectedProfileId={selectedProfileId}
+            canManageProfiles={permissions.canManageProfiles}
+          />
         )}
 
-        {/* --- COLUNA DIREITA: CENÁRIOS --- */}
-        <div
-          className={
-            permissions.canViewProfiles ? "md:col-span-8" : "md:col-span-12"
-          }
-        >
-          <Card className="h-full flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <FileCog className="h-5 w-5" /> Cenários de Teste
-                </CardTitle>
-                <CardDescription>
-                  Gerenciando cenários de:{" "}
-                  <span className="font-bold text-primary">
-                    {selectedProfile?.name || "Selecione..."}
-                  </span>
-                </CardDescription>
-              </div>
-              {selectedProfileId && permissions.canManageScenarios && (
-                <ScenarioEditor profileId={selectedProfileId} />
-              )}
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto bg-muted/30 p-6">
-              {!selectedProfileId ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-                  <Building2 className="h-10 w-10 opacity-20" />
-                  <p>
-                    {permissions.canViewProfiles
-                      ? "Selecione uma empresa ao lado para começar."
-                      : "Nenhuma empresa associada."}
-                  </p>
-                </div>
-              ) : scenarios.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-                  <FileCog className="h-10 w-10 opacity-20" />
-                  <p>Nenhum cenário criado para esta empresa.</p>
-                  {permissions.canManageScenarios && (
-                    <p className="text-xs">
-                      Clique em &quot;Novo Cenário&quot; acima.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {scenarios.map((scenario) => (
-                    <div
-                      key={scenario.id}
-                      className="bg-card border border-border rounded-lg p-4 flex items-center justify-between hover:shadow-md hover:border-primary/30 transition-all"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-sm text-foreground">
-                            {scenario.name}
-                          </h4>
-                          <Badge
-                            variant={scenario.active ? "default" : "secondary"}
-                            className={
-                              scenario.active
-                                ? "bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
-                                : "bg-muted text-muted-foreground"
-                            }
-                          >
-                            {scenario.active ? "Ativo" : "Inativo"}
-                          </Badge>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {scenario.reforma_tributaria && (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] border-blue-400/50 bg-blue-500/10 text-blue-600 dark:text-blue-400 dark:border-blue-500/30 dark:bg-blue-500/20"
-                            >
-                              Reforma Trib.
-                            </Badge>
-                          )}
-                          {scenario.editar_data && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Data
-                            </Badge>
-                          )}
-                          {scenario.editar_emitente && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Emitente
-                            </Badge>
-                          )}
-                          {scenario.alterar_cUF && (
-                            <Badge variant="outline" className="text-[10px]">
-                              UF
-                            </Badge>
-                          )}
-                          {scenario.alterar_serie && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Série
-                            </Badge>
-                          )}
-                          {scenario.aplicar_reducao_aliq && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Redução Alíquota
-                            </Badge>
-                          )}
-                          {scenario.editar_destinatario_pj && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Dest. PJ
-                            </Badge>
-                          )}
-                          {scenario.editar_destinatario_pf && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Dest. PF
-                            </Badge>
-                          )}
-                          {scenario.editar_produtos && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Produtos
-                            </Badge>
-                          )}
-                          {scenario.editar_impostos && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Impostos
-                            </Badge>
-                          )}
-                          {scenario.editar_refNFe && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Ref. NFe
-                            </Badge>
-                          )}
-                          {scenario.editar_cst && (
-                            <Badge variant="outline" className="text-[10px]">
-                              CST
-                            </Badge>
-                          )}
-                          {scenario.zerar_ipi_remessa_retorno && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Zerar IPI Remessa/Retorno
-                            </Badge>
-                          )}
-                          {scenario.zerar_ipi_venda && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Zerar IPI Venda
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-
-                      {permissions.canManageScenarios && (
-                        <div className="flex items-center gap-2">
-                          {/* Botão Duplicar */}
-                          <ScenarioEditor
-                            profileId={selectedProfileId}
-                            scenarioToEdit={scenario}
-                            isDuplicating={true}
-                          />
-                          {/* Botão Editar */}
-                          <ScenarioEditor
-                            profileId={selectedProfileId}
-                            scenarioToEdit={scenario}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <Suspense key={selectedProfileId ?? "none"} fallback={<ScenariosSkeleton />}>
+          <ScenariosSection
+            profileId={selectedProfileId}
+            profileName={selectedProfile?.name}
+            permissions={permissions as UserPermissions}
+          />
+        </Suspense>
       </div>
     </div>
   );

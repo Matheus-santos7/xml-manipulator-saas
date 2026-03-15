@@ -3,7 +3,7 @@
  * Substitui o cookie baseado em email por sessionToken seguro.
  */
 
-import { db } from "@/app/lib/db";
+import { db } from "@/lib/db";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { AUTH_COOKIE, AUTH_COOKIE_OPTIONS } from "./constants";

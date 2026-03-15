@@ -1,10 +1,11 @@
 "use server";
 
-import { db } from "@/app/lib/db";
-import { logScenarioAndFiles } from "@/app/actions/process-xml/logging";
-import { prepararArquivosParaProcessamento } from "@/app/actions/process-xml/prepare-files";
-import { prepararMapeamentosELog } from "@/app/actions/process-xml/map-keys";
-import { editarArquivosEAtualizarReferencias } from "@/app/actions/process-xml/edit-files";
+import { db } from "@/lib/db";
+import { logger } from "@/lib/logging";
+import { logScenarioAndFiles } from "@/lib/actions/process-xml/logging";
+import { prepararArquivosParaProcessamento } from "@/lib/actions/process-xml/prepare-files";
+import { prepararMapeamentosELog } from "@/lib/actions/process-xml/map-keys";
+import { editarArquivosEAtualizarReferencias } from "@/lib/actions/process-xml/edit-files";
 
 /**
  * Função servidor responsável por orquestrar todo o fluxo de processamento de XML:
@@ -15,8 +16,6 @@ import { editarArquivosEAtualizarReferencias } from "@/app/actions/process-xml/e
  *  - edição dos XMLs de acordo com o cenário (dados cadastrais, datas, CST, reforma tributária)
  *  - montagem do payload final com relatórios e arquivos processados para o frontend.
  *
- * A assinatura (FormData → objeto com success, message, processedFiles, etc.) é mantida
- * compatível com a implementação original usada pelo componente do manipulador.
  */
 export async function processarArquivosXml(formData: FormData) {
   try {
@@ -155,7 +154,8 @@ export async function processarArquivosXml(formData: FormData) {
       }),
     };
   } catch (error) {
-    console.error("Erro ao processar arquivos XML:", error);
+    const scenarioIdParam = formData.get("scenarioId");
+    logger.error("Erro ao processar arquivos XML", { scenarioId: typeof scenarioIdParam === "string" ? scenarioIdParam : undefined }, error as Error);
     return {
       success: false,
       message: "Erro ao processar arquivos. Por favor, tente novamente.",

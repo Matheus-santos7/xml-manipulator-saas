@@ -1,4 +1,5 @@
-import { db } from "@/app/lib/db";
+import { cache } from "react";
+import { db } from "@/lib/db";
 import { ROLES, getPermissions, type Role, type UserPermissions } from "./rbac";
 import { getAuthenticatedUserEmail } from "@/app/actions/auth";
 import { logger } from "@/lib/logging";
@@ -14,10 +15,10 @@ export interface CurrentUser {
 }
 
 /**
- * Obtém o usuário atual e suas permissões
- * Busca o usuário autenticado via cookie de sessão
+ * Implementação interna: busca o usuário no DB.
+ * Envolvida em cache() para deduplicar no mesmo request (layout + page).
  */
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+async function getCurrentUserImpl(): Promise<CurrentUser | null> {
   try {
     // Busca email do cookie de autenticação
     const userEmail = await getAuthenticatedUserEmail();
@@ -109,6 +110,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     return null;
   }
 }
+
+/**
+ * Obtém o usuário atual e suas permissões (com cache por request).
+ * Layout e página compartilham o mesmo resultado no mesmo request, evitando queries duplicadas.
+ */
+export const getCurrentUser = cache(getCurrentUserImpl);
 
 /**
  * Verifica se o usuário tem acesso a um profile específico
