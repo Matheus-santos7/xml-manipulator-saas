@@ -46,6 +46,7 @@ export default function XmlProcessorClient({
 }) {
   const [files, setFiles] = useState<File[]>([]);
   const [selectedScenario, setSelectedScenario] = useState<string>("");
+  const [maskScenarioData, setMaskScenarioData] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedData, setProcessedData] = useState<ProcessedFile[]>([]);
 
@@ -71,7 +72,7 @@ export default function XmlProcessorClient({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   const handleProcess = async () => {
-    if (!selectedScenario) {
+    if (!selectedScenario && !maskScenarioData) {
       toast.error("Selecione um cenário", {
         description: "Escolha um cenário de teste antes de processar.",
       });
@@ -82,6 +83,7 @@ export default function XmlProcessorClient({
     setIsProcessing(true);
     const formData = new FormData();
     formData.append("scenarioId", selectedScenario);
+    formData.append("maskScenarioData", maskScenarioData ? "true" : "false");
     files.forEach((file) => formData.append("files", file));
 
     try {
@@ -162,13 +164,13 @@ export default function XmlProcessorClient({
             <CardTitle>Manipulador de XMLs</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-sm font-medium">Selecionar cenário</label>
               <Select
                 onValueChange={setSelectedScenario}
                 value={selectedScenario}
               >
-                <SelectTrigger className="w-full mt-4">
+                <SelectTrigger className="w-full mt-1">
                   <SelectValue placeholder="Escolha um cenário..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -179,6 +181,29 @@ export default function XmlProcessorClient({
                   ))}
                 </SelectContent>
               </Select>
+
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <span className="text-sm text-muted-foreground">
+                  Mascarar dados sensíveis dos XMLs carregados
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMaskScenarioData((prev) => !prev)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full border transition-colors ${
+                    maskScenarioData
+                      ? "bg-primary border-primary"
+                      : "bg-background border-border"
+                  }`}
+                  aria-pressed={maskScenarioData}
+                  aria-label="Alternar mascaramento de dados sensíveis"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-background shadow transition-transform ${
+                      maskScenarioData ? "translate-x-5" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
 
             <div
@@ -231,7 +256,9 @@ export default function XmlProcessorClient({
                 className="w-full"
                 onClick={handleProcess}
                 disabled={
-                  files.length === 0 || isProcessing || !selectedScenario
+                  files.length === 0 ||
+                  isProcessing ||
+                  (!selectedScenario && !maskScenarioData)
                 }
               >
                 {isProcessing ? (

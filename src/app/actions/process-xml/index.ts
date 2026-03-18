@@ -2,10 +2,13 @@
 
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logging";
-import { logScenarioAndFiles } from "@/lib/actions/process-xml/logging";
-import { prepararArquivosParaProcessamento } from "@/lib/actions/process-xml/prepare-files";
-import { prepararMapeamentosELog } from "@/lib/actions/process-xml/map-keys";
-import { editarArquivosEAtualizarReferencias } from "@/lib/actions/process-xml/edit-files";
+import {
+  logScenarioAndFiles,
+  prepararArquivosParaProcessamento,
+  prepararMapeamentosELog,
+  editarArquivosEAtualizarReferencias,
+} from "@/lib/actions/process-xml";
+import { mascararXmls } from "@/lib/masking/xml-masking";
 
 /**
  * Função servidor responsável por orquestrar todo o fluxo de processamento de XML:
@@ -19,13 +22,49 @@ import { editarArquivosEAtualizarReferencias } from "@/lib/actions/process-xml/e
  */
 export async function processarArquivosXml(formData: FormData) {
   try {
-    // Extrai do FormData o ID do cenário selecionado e a lista de arquivos enviados.
-    const scenarioId = formData.get("scenarioId") as string;
+    // Extrai do FormData o ID do cenário (quando houver) e a lista de arquivos enviados.
+    const scenarioIdRaw = formData.get("scenarioId");
+    const scenarioId = typeof scenarioIdRaw === "string" ? scenarioIdRaw : "";
+    const maskScenarioDataRaw = formData.get("maskScenarioData");
+    const maskScenarioData =
+      typeof maskScenarioDataRaw === "string"
+        ? maskScenarioDataRaw === "true"
+        : true;
     const files = formData.getAll("files") as File[];
 
-    // Se faltam dados mínimos, encerra cedo com mensagem amigável.
-    if (!scenarioId || files.length === 0) {
-      return { success: false, message: "Cenário ou arquivos faltando." };
+    // Se não há arquivos, encerra cedo com mensagem amigável.
+    if (files.length === 0) {
+      return { success: false, message: "Nenhum arquivo enviado." };
+    }
+
+    // Quando a flag de mascaramento estiver ativa e nenhum cenário for selecionado,
+    // apenas mascaramos os dados sensíveis dos XMLs, sem aplicar regras de cenário.
+    if (maskScenarioData && !scenarioId) {
+      const { filesForProcessing } = await prepararArquivosParaProcessamento(
+        files
+      );
+
+      const mascarados = mascararXmls(
+        filesForProcessing.map((file) => ({
+          name: file.name,
+          content: file.content,
+        }))
+      );
+
+      return {
+        success: true,
+        message: "XMLs mascarados com sucesso.",
+        processedFiles: mascarados,
+      };
+    }
+
+    // A partir daqui, é obrigatório ter cenário para aplicar regras de edição.
+    if (!scenarioId) {
+      return {
+        success: false,
+        message:
+          "Cenário não informado. Se deseja apenas mascarar dados, ative a opção de mascaramento.",
+      };
     }
 
     // Carrega o cenário completo do banco, incluindo todas as entidades relacionadas
@@ -50,7 +89,9 @@ export async function processarArquivosXml(formData: FormData) {
     }
 
     // Ponto único para logging/observabilidade do cenário e arquivos processados.
-    logScenarioAndFiles(scenario, files, scenarioId);
+    if (maskScenarioData) {
+      logScenarioAndFiles(scenario, files, scenarioId);
+    }
     // 1) Lê o conteúdo dos arquivos recebidos e executa a renomeação inicial
     const { filesForProcessing, renameReport } =
       await prepararArquivosParaProcessamento(files);
