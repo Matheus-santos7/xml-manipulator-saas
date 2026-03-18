@@ -1,5 +1,3 @@
-import { logger } from "@/lib/logging";
-
 type ScenarioEmitenteLike = {
   cnpj?: string | null;
   xNome?: string | null;
@@ -172,7 +170,7 @@ export function logScenarioAndFiles(
 
   const filesSummary = buildFilesSummary(files);
 
-  logger.info("Iniciando processamento de XML com cenário", {
+  console.info("Iniciando processamento de XML com cenário", {
     scenarioId,
     scenarioName: scenario.name,
     flags: {

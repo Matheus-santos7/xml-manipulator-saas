@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import type { CreateProfileInput, UpdateProfileInput } from "@/lib/scenarios";
-import { logger } from "@/lib/logging";
 
 /**
  * Cria um novo profile de empresa no workspace do usuário autenticado.
@@ -81,7 +80,7 @@ export async function saveProfile(data: CreateProfileInput) {
       };
     }
 
-    logger.error("Failed to create company profile", {
+    console.error("Failed to create company profile", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       cnpj,
@@ -133,7 +132,7 @@ export async function updateProfile(data: UpdateProfileInput) {
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    logger.error("Failed to update company profile", {
+    console.error("Failed to update company profile", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       profileId: data.id,
@@ -160,7 +159,7 @@ export async function getProfileById(profileId: string) {
 
     return profile;
   } catch (error) {
-    logger.error("Failed to fetch company profile", {
+    console.error("Failed to fetch company profile", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       profileId,
@@ -193,7 +192,7 @@ export async function deleteProfile(profileId: string) {
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    logger.error("Failed to delete company profile", {
+    console.error("Failed to delete company profile", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       profileId,

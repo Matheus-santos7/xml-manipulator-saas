@@ -8,7 +8,7 @@ import {
   DEVOLUCOES_CFOP,
   RETORNOS_CFOP,
   REMESSAS_CFOP,
-} from "@/lib/data";
+} from "@/lib/constants";
 
 /**
  * Interface para dados de produto (importada do xmlEditor)

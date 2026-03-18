@@ -3,7 +3,6 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, canAccessProfile } from "@/lib/auth";
-import { logger } from "@/lib/logging";
 import {
   emitenteSchema,
   destinatarioSchema,
@@ -67,7 +66,7 @@ export async function saveScenario(data: SaveScenarioInput) {
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    logger.error(
+    console.error(
       "Erro ao salvar cenário",
       { profileId: data.profileId, name: data.name },
       error as Error
@@ -117,7 +116,7 @@ export async function deleteScenario(scenarioId: string) {
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    logger.error("Erro ao deletar cenário", { scenarioId }, error as Error);
+    console.error("Erro ao deletar cenário", { scenarioId }, error as Error);
     return { success: false, error: "Erro ao deletar cenário" };
   }
 }

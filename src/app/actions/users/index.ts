@@ -5,7 +5,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { requireAdmin, ensureAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
-import { logger } from "@/lib/logging";
 
 type TransactionClient = Parameters<Parameters<typeof db.$transaction>[0]>[0];
 
@@ -107,7 +106,7 @@ export async function updateMemberRole(
     revalidatePath("/settings/members");
     return { success: true };
   } catch (error) {
-    logger.error("Erro ao atualizar role", { memberId }, error as Error);
+    console.error("Erro ao atualizar role", { memberId }, error);
     return {
       success: false,
       error: "Erro ao atualizar role do usuário.",
@@ -159,7 +158,7 @@ export async function updateMemberProfile(
     revalidatePath("/settings/members");
     return { success: true };
   } catch (error) {
-    logger.error("Erro ao atualizar profile", { memberId }, error as Error);
+    console.error("Erro ao atualizar profile", { memberId }, error);
     return {
       success: false,
       error: "Erro ao associar empresa ao usuário.",
@@ -203,7 +202,7 @@ export async function removeMember(
     revalidatePath("/settings/members");
     return { success: true };
   } catch (error) {
-    logger.error("Erro ao remover membro", { memberId }, error as Error);
+    console.error("Erro ao remover membro", { memberId }, error);
     return {
       success: false,
       error: "Erro ao remover usuário do workspace.",
@@ -275,7 +274,11 @@ export async function updateUserByAdmin(data: {
     revalidatePath("/settings/members");
     return { success: true };
   } catch (error) {
-    logger.error("Erro ao atualizar usuário pelo admin", { memberId: data.memberId }, error as Error);
+    console.error(
+      "Erro ao atualizar usuário pelo admin",
+      { memberId: data.memberId },
+      error
+    );
     return {
       success: false,
       error: "Erro interno ao atualizar usuário.",
@@ -342,7 +345,7 @@ export async function createMember(data: {
     revalidatePath("/settings/members");
     return { success: true };
   } catch (error) {
-    logger.error("Erro ao criar membro", { email: data.email }, error as Error);
+    console.error("Erro ao criar membro", { email: data.email }, error);
     return {
       success: false,
       error: "Erro ao criar usuário.",

@@ -15,7 +15,7 @@ import {
   RETORNOS_CFOP,
   REMESSAS_CFOP,
   type TipoOperacao,
-} from "@/lib/data";
+} from "@/lib/constants";
 import { atualizarProdutosNoXml } from "@/lib/xml/produtoEditor";
 
 /**

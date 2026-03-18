@@ -7,7 +7,20 @@ import { db } from "@/lib/db";
 import { cookies } from "next/headers";
 import { randomBytes } from "crypto";
 import { AUTH_COOKIE, AUTH_COOKIE_OPTIONS } from "./constants";
-import { logger, logAuthEvent } from "@/lib/logging";
+
+function logAuthEvent(
+  event:
+    | "login_success"
+    | "login_failure"
+    | "logout"
+    | "session_created"
+    | "session_expired",
+  context: Record<string, unknown>
+) {
+  // Logging apenas para observabilidade local/console.
+  // Sem dependência do módulo `@/lib/logging`.
+  console.info(`[auth:${event}]`, context);
+}
 
 // Duração padrão da sessão (7 dias em milissegundos)
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -44,7 +57,7 @@ export async function createSession(userId: string): Promise<string> {
 
     return sessionToken;
   } catch (error) {
-    logger.error("Erro ao criar sessão", { userId }, error as Error);
+    console.error("Erro ao criar sessão", { userId }, error as Error);
     throw new Error("Falha ao criar sessão");
   }
 }
@@ -106,7 +119,7 @@ export async function getSession(): Promise<{
       user: session.User,
     };
   } catch (error) {
-    logger.error("Erro ao validar sessão", {}, error as Error);
+    console.error("Erro ao validar sessão", {}, error as Error);
     return null;
   }
 }
@@ -121,7 +134,7 @@ export async function deleteSession(sessionToken: string): Promise<void> {
     });
   } catch {
     // Sessão já foi deletada ou não existe
-    logger.debug("Sessão não encontrada para deletar", {
+    console.debug("Sessão não encontrada para deletar", {
       sessionId: sessionToken,
     });
   }
@@ -173,9 +186,9 @@ export async function renewSession(sessionToken: string): Promise<void> {
       data: { expires: newExpires },
     });
 
-    logger.debug("Sessão renovada", { sessionId: sessionToken });
+    console.debug("Sessão renovada", { sessionId: sessionToken });
   } catch (error) {
-    logger.warn(
+    console.warn(
       "Erro ao renovar sessão",
       { sessionId: sessionToken },
       error as Error
@@ -196,10 +209,10 @@ export async function cleanupExpiredSessions(): Promise<number> {
       },
     });
 
-    logger.info("Sessões expiradas limpas", { count: result.count });
+    console.info("Sessões expiradas limpas", { count: result.count });
     return result.count;
   } catch (error) {
-    logger.error("Erro ao limpar sessões expiradas", {}, error as Error);
+    console.error("Erro ao limpar sessões expiradas", {}, error as Error);
     return 0;
   }
 }
@@ -226,7 +239,7 @@ export async function getUserSessions(userId: string) {
       },
     });
   } catch (error) {
-    logger.error(
+    console.error(
       "Erro ao buscar sessões do usuário",
       { userId },
       error as Error
@@ -244,12 +257,12 @@ export async function revokeAllUserSessions(userId: string): Promise<void> {
       where: { userId },
     });
 
-    logger.info("Todas as sessões do usuário foram revogadas", {
+    console.info("Todas as sessões do usuário foram revogadas", {
       userId,
       count: result.count,
     });
   } catch (error) {
-    logger.error(
+    console.error(
       "Erro ao revogar sessões do usuário",
       { userId },
       error as Error

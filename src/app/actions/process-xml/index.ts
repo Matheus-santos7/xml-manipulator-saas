@@ -1,7 +1,6 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { logger } from "@/lib/logging";
 import {
   logScenarioAndFiles,
   prepararArquivosParaProcessamento,
@@ -38,22 +37,49 @@ export async function processarArquivosXml(formData: FormData) {
     }
 
     // Quando a flag de mascaramento estiver ativa e nenhum cenário for selecionado,
-    // apenas mascaramos os dados sensíveis dos XMLs, sem aplicar regras de cenário.
+    // primeiro aplicamos a lógica de renomeação (apenas para definir o novo nome)
+    // e, em seguida, mascaramos os dados sensíveis dos XMLs, sem aplicar regras de cenário.
     if (maskScenarioData && !scenarioId) {
-      const { filesForProcessing } = await prepararArquivosParaProcessamento(
-        files
-      );
+      const { filesForProcessing, renameReport } =
+        await prepararArquivosParaProcessamento(files);
+
+      const renameMap = new Map<
+        string,
+        { newName: string | null; status: string; message?: string }
+      >();
+      for (const detail of renameReport.details) {
+        renameMap.set(detail.originalName, {
+          newName: detail.newName,
+          status: detail.status,
+          message: detail.message,
+        });
+      }
 
       const mascarados = mascararXmls(
-        filesForProcessing.map((file) => ({
-          name: file.name,
-          content: file.content,
-        }))
-      );
+        filesForProcessing.map((file) => {
+          const renameInfo = renameMap.get(file.name);
+          return {
+            name: renameInfo?.newName || file.name,
+            content: file.content,
+          };
+        })
+      ).map((masked) => {
+        const renameInfo = renameMap.get(masked.originalName);
+        const logs = [...masked.logs];
+        if (renameInfo?.message) {
+          logs.unshift(renameInfo.message);
+        }
+        return {
+          ...masked,
+          newName: renameInfo?.newName || masked.newName,
+          status: renameInfo?.status === "renamed" ? "success" : masked.status,
+          logs,
+        };
+      });
 
       return {
         success: true,
-        message: "XMLs mascarados com sucesso.",
+        message: "XMLs renomeados (quando aplicável) e mascarados com sucesso.",
         processedFiles: mascarados,
       };
     }
@@ -196,7 +222,11 @@ export async function processarArquivosXml(formData: FormData) {
     };
   } catch (error) {
     const scenarioIdParam = formData.get("scenarioId");
-    logger.error("Erro ao processar arquivos XML", { scenarioId: typeof scenarioIdParam === "string" ? scenarioIdParam : undefined }, error as Error);
+    console.error("Erro ao processar arquivos XML", {
+      scenarioId:
+        typeof scenarioIdParam === "string" ? scenarioIdParam : undefined,
+      error,
+    });
     return {
       success: false,
       message: "Erro ao processar arquivos. Por favor, tente novamente.",

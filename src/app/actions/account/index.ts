@@ -5,7 +5,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { revokeAllUserSessions, createSession } from "@/lib/auth";
-import { logger } from "@/lib/logging";
 
 /**
  * Busca os dados básicos do usuário atualmente autenticado (nome, email e indicação de senha).
@@ -123,7 +122,7 @@ export async function updateUserProfile(data: UpdateProfileData) {
       await revokeAllUserSessions(user.id);
       // Criar nova sessão para o usuário atual
       await createSession(user.id);
-      logger.info("Password changed, all sessions revoked", {
+      console.info("Password changed, all sessions revoked", {
         userId: user.id,
       });
     }
@@ -138,14 +137,14 @@ export async function updateUserProfile(data: UpdateProfileData) {
     revalidatePath("/xml-manipulator");
     revalidatePath("/settings");
 
-    logger.info("User profile updated", {
+    console.info("User profile updated", {
       userId: user.id,
       changedFields: Object.keys(updateData),
     });
 
     return { success: true };
   } catch (error) {
-    logger.error("Failed to update user profile", {
+    console.error("Failed to update user profile", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
@@ -223,7 +222,7 @@ export async function updateCurrentUser(
       await revokeAllUserSessions(user.id);
       // Criar nova sessão para o usuário atual
       await createSession(user.id);
-      logger.info("Password changed, all sessions revoked", {
+      console.info("Password changed, all sessions revoked", {
         userId: user.id,
       });
     }
@@ -238,14 +237,14 @@ export async function updateCurrentUser(
     revalidatePath("/xml-manipulator");
     revalidatePath("/settings");
 
-    logger.info("User data updated", {
+    console.info("User data updated", {
       userId: user.id,
       changedFields: Object.keys(data),
     });
 
     return { success: true };
   } catch (error) {
-    logger.error("Failed to update current user", {
+    console.error("Failed to update current user", {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });

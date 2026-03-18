@@ -1,7 +1,7 @@
 /**
  * Lista de estados brasileiros (sigla UF e nome) para uso em formulários de endereço.
  */
-export const ESTADOS_BR = [
+export const STATE_BR = [
   { sigla: "AC", nome: "Acre" },
   { sigla: "AL", nome: "Alagoas" },
   { sigla: "AP", nome: "Amapá" },
@@ -31,4 +31,4 @@ export const ESTADOS_BR = [
   { sigla: "TO", nome: "Tocantins" },
 ] as const;
 
-export type SiglaUF = (typeof ESTADOS_BR)[number]["sigla"];
+export type SiglaUF = (typeof STATE_BR)[number]["sigla"];

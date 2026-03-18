@@ -2,7 +2,6 @@ import { cache } from "react";
 import { db } from "@/lib/db";
 import { ROLES, getPermissions, type Role, type UserPermissions } from "./rbac";
 import { getAuthenticatedUserEmail } from "@/app/actions/auth";
-import { logger } from "@/lib/logging";
 
 export interface CurrentUser {
   id: string;
@@ -22,10 +21,10 @@ async function getCurrentUserImpl(): Promise<CurrentUser | null> {
   try {
     // Busca email do cookie de autenticação
     const userEmail = await getAuthenticatedUserEmail();
-    logger.debug("User email retrieved from cookie", { userEmail });
+    console.debug("User email retrieved from cookie", { userEmail });
 
     if (!userEmail) {
-      logger.debug("No user email found in cookie");
+      console.debug("No user email found in cookie");
       return null;
     }
 
@@ -36,13 +35,13 @@ async function getCurrentUserImpl(): Promise<CurrentUser | null> {
       },
     });
 
-    logger.debug("User record retrieved", {
+    console.debug("User record retrieved", {
       userId: user?.id,
       userEmail: user?.email,
     });
 
     if (!user) {
-      logger.debug("No user record found in database");
+      console.debug("No user record found in database");
       return null;
     }
 
@@ -57,7 +56,7 @@ async function getCurrentUserImpl(): Promise<CurrentUser | null> {
       },
     });
 
-    logger.debug("Workspace member retrieved", {
+    console.debug("Workspace member retrieved", {
       workspaceMemberId: workspaceMember?.id,
     });
 
@@ -106,7 +105,7 @@ async function getCurrentUserImpl(): Promise<CurrentUser | null> {
       permissions,
     };
   } catch (error) {
-    logger.error("Failed to get current user", { error });
+    console.error("Failed to get current user", { error });
     return null;
   }
 }

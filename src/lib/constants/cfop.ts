@@ -36,3 +36,4 @@ export const VENDAS_CFOP = CFOP_LISTS.VENDAS as readonly string[];
 export const DEVOLUCOES_CFOP = CFOP_LISTS.DEVOLUCOES as readonly string[];
 export const RETORNOS_CFOP = CFOP_LISTS.RETORNOS as readonly string[];
 export const REMESSAS_CFOP = CFOP_LISTS.REMESSAS as readonly string[];
+

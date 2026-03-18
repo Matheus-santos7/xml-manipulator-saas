@@ -4,7 +4,30 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { createSession, endSession, getSession } from "@/lib/auth";
-import { logger, logAuthEvent, createUserContext } from "@/lib/logging";
+
+function createUserContext(user: {
+  id: string;
+  email?: string | null;
+  workspaceId?: string;
+}) {
+  return {
+    userId: user.id,
+    email: user.email || undefined,
+    workspaceId: user.workspaceId,
+  };
+}
+
+function logAuthEvent(
+  event:
+    | "login_success"
+    | "login_failure"
+    | "logout"
+    | "session_created"
+    | "session_expired",
+  context: Record<string, unknown>
+) {
+  console.info(`[auth:${event}]`, context);
+}
 
 /**
  * Efetua o login do usuário a partir de email e senha.
@@ -70,7 +93,7 @@ export async function loginAction(
 
     return { success: true };
   } catch (error) {
-    logger.error("Erro no login", { email }, error as Error);
+    console.error("Erro no login", { email }, error as Error);
     return { success: false, error: "Erro ao realizar login" };
   }
 }

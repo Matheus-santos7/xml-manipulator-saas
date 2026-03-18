@@ -25,7 +25,7 @@ import {
 import { toast } from "sonner";
 import { saveProfile } from "@/app/actions/company";
 import { Building2, Loader2, Plus, Search } from "lucide-react";
-import { ESTADOS_BR } from "@/lib/constants";
+import { STATE_BR } from "@/lib/constants";
 
 function formatCep(cep: string): string {
   const digits = cep.replace(/\D/g, "");
@@ -329,7 +329,7 @@ export function AddCompanyDialog() {
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ESTADOS_BR.map((estado) => (
+                      {STATE_BR.map((estado) => (
                         <SelectItem key={estado.sigla} value={estado.sigla}>
                           {estado.sigla} - {estado.nome}
                         </SelectItem>

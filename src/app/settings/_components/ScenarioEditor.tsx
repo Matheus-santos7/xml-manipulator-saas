@@ -57,7 +57,7 @@ import {
   Copy,
   Shuffle,
 } from "lucide-react";
-import { DESTINATARIOS_DISPONIVEIS } from "@/lib/data";
+import { DESTINATARIOS_DISPONIVEIS } from "@/lib/constants";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Schema Zod para validação do formulário

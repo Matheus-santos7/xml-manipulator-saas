@@ -9,7 +9,7 @@ import {
   RETORNOS_CFOP,
   REMESSAS_CFOP,
   type TipoOperacao,
-} from "@/lib/data";
+} from "@/lib/constants";
 import {
   XML_STRUCTURE,
   XML_TAGS,

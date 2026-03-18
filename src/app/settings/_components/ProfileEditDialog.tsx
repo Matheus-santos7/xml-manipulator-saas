@@ -27,7 +27,7 @@ import { updateProfile } from "@/app/actions/company";
 import { Pencil, Building2, Loader2 } from "lucide-react";
 
 // Lista de estados brasileiros
-const ESTADOS_BR = [
+const STATE_BR = [
   { sigla: "AC", nome: "Acre" },
   { sigla: "AL", nome: "Alagoas" },
   { sigla: "AP", nome: "Amapá" },
@@ -383,7 +383,7 @@ export function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ESTADOS_BR.map((estado) => (
+                    {STATE_BR.map((estado) => (
                       <SelectItem key={estado.sigla} value={estado.sigla}>
                         {estado.sigla} - {estado.nome}
                       </SelectItem>

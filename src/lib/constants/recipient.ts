@@ -777,8 +777,11 @@ export const DESTINATARIOS_DISPONIVEIS: DestinatarioDisponivel[] = [
 /**
  * Função auxiliar para sortear um destinatário
  */
-export function sortearDestinatario(tipo: "PJ" | "PF"): DestinatarioDisponivel {
+export function sortearDestinatario(
+  tipo: "PJ" | "PF"
+): DestinatarioDisponivel {
   const filtrados = DESTINATARIOS_DISPONIVEIS.filter((d) => d.tipo === tipo);
   const indice = Math.floor(Math.random() * filtrados.length);
   return filtrados[indice];
 }
+
