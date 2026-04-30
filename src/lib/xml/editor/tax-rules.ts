@@ -56,6 +56,60 @@ function replaceTagValue(xml: string, regex: RegExp, value: string): string {
   return xml.replace(regex, `$1${value}$2`);
 }
 
+function ensureIcmsUfDestBlock(detXml: string): string {
+  if (/<ICMSUFDest[^>]*>[\s\S]*?<\/ICMSUFDest>/i.test(detXml)) return detXml;
+
+  const icmsOpenMatch = detXml.match(/<ICMS[^>]*>/i);
+  if (!icmsOpenMatch) return detXml;
+
+  const icmsTagOpen = icmsOpenMatch[0];
+  const icmsTagNameMatch = icmsTagOpen.match(/^<([A-Za-z0-9_:-]+)/);
+  const icmsTagName = icmsTagNameMatch?.[1];
+  if (!icmsTagName) return detXml;
+
+  const icmsCloseRegex = new RegExp(`</${icmsTagName}>`, "i");
+  if (!icmsCloseRegex.test(detXml)) return detXml;
+
+  const blocoPadrao =
+    "<ICMSUFDest>" +
+    "<vBCUFDest>0.00</vBCUFDest>" +
+    "<vBCFCPUFDest>0.00</vBCFCPUFDest>" +
+    "<pFCPUFDest>0.0000</pFCPUFDest>" +
+    "<pICMSUFDest>0.0000</pICMSUFDest>" +
+    "<pICMSInter>0.0000</pICMSInter>" +
+    "<pICMSInterPart>100.0000</pICMSInterPart>" +
+    "<vFCPUFDest>0.00</vFCPUFDest>" +
+    "<vICMSUFDest>0.00</vICMSUFDest>" +
+    "<vICMSUFRemet>0.00</vICMSUFRemet>" +
+    "</ICMSUFDest>";
+
+  return detXml.replace(icmsCloseRegex, `${blocoPadrao}</${icmsTagName}>`);
+}
+
+function ensureGCbsBlock(ibsBlock: string): string {
+  if (/<gCBS[^>]*>[\s\S]*?<\/gCBS>/i.test(ibsBlock)) return ibsBlock;
+  if (/<gIBSCBS[^>]*>[\s\S]*?<\/gIBSCBS>/i.test(ibsBlock)) {
+    return ibsBlock.replace(/<\/gIBSCBS>/i, "<gCBS></gCBS></gIBSCBS>");
+  }
+  return ibsBlock.replace(/<\/IBSCBS>/i, "<gCBS></gCBS></IBSCBS>");
+}
+
+function setGCbsTagValue(gCbsBlock: string, tag: string, value: string): string {
+  const tagRegex = new RegExp(`(<${tag}>)[^<]*(<\\/${tag}>)`, "i");
+  if (tagRegex.test(gCbsBlock)) {
+    return gCbsBlock.replace(tagRegex, `$1${value}$2`);
+  }
+  return gCbsBlock.replace(/<\/gCBS>/i, `<${tag}>${value}</${tag}></gCBS>`);
+}
+
+function ensureIbsCbsTotGCbsBlock(totalBlock: string): string {
+  if (!/<IBSCBSTot[^>]*>[\s\S]*?<\/IBSCBSTot>/i.test(totalBlock)) return totalBlock;
+  if (/<IBSCBSTot[^>]*>[\s\S]*?<gCBS[^>]*>[\s\S]*?<\/gCBS>[\s\S]*?<\/IBSCBSTot>/i.test(totalBlock)) {
+    return totalBlock;
+  }
+  return totalBlock.replace(/<\/IBSCBSTot>/i, "<gCBS></gCBS></IBSCBSTot>");
+}
+
 function parseNumberTag(xml: string, tag: string): number {
   const match = xml.match(new RegExp(`<${tag}>\\s*([^<]+)\\s*<\\/${tag}>`, "i"));
   if (!match) return 0;
@@ -288,6 +342,24 @@ export function updateNFeTotals(xml: string, totals: ApplyResult["totals"]): str
   out = replaceTagValue(out, /(<IBSCBSTot>[\s\S]*?<vIBSMun>)[^<]+(<\/vIBSMun>)/i, formatValue(totals.vIBSMun));
   out = replaceTagValue(out, /(<IBSCBSTot>[\s\S]*?<vIBS>)[^<]+(<\/vIBS>)/i, formatValue(totals.vIBS));
   out = replaceTagValue(out, /(<IBSCBSTot>[\s\S]*?<vCBS>)[^<]+(<\/vCBS>)/i, formatValue(totals.vCBS));
+
+  // Garante estrutura e conteúdo de gCBS no totalizador (IBSCBSTot)
+  const ibsTotMatch = out.match(/<IBSCBSTot[^>]*>[\s\S]*?<\/IBSCBSTot>/i);
+  if (ibsTotMatch) {
+    let ibsTotBlock = ensureIbsCbsTotGCbsBlock(ibsTotMatch[0]);
+    const gCbsMatch = ibsTotBlock.match(/<gCBS[^>]*>[\s\S]*?<\/gCBS>/i);
+    if (gCbsMatch) {
+      const vCbsValue = formatValue(totals.vCBS);
+      let gCbsBlock = gCbsMatch[0];
+      gCbsBlock = setGCbsTagValue(gCbsBlock, "vDif", "0.00");
+      gCbsBlock = setGCbsTagValue(gCbsBlock, "vDevTrib", "0.00");
+      gCbsBlock = setGCbsTagValue(gCbsBlock, "vCBS", vCbsValue);
+      gCbsBlock = setGCbsTagValue(gCbsBlock, "vCredPres", "0.00");
+      gCbsBlock = setGCbsTagValue(gCbsBlock, "vCredPresCondSus", "0.00");
+      ibsTotBlock = ibsTotBlock.replace(gCbsMatch[0], gCbsBlock);
+      out = out.replace(ibsTotMatch[0], ibsTotBlock);
+    }
+  }
   return out;
 }
 
@@ -298,14 +370,15 @@ export function applyTaxRuleToDetBlock(
   emitUf: string = "",
   productOrigin: string = "",
   isContributorDest: boolean = false,
-  isFinalConsumer: boolean = false
+  isFinalConsumer: boolean = false,
+  isEducationalIbsCbsPeriod: boolean = false
 ): ApplyResult {
   let out = detBlock;
   const logs: string[] = [];
   const vProd = parseNumberTag(out, "vProd");
   const totals = {
     vProd,
-    vBC: vProd,
+    vBC: 0,
     vBCUFDest: 0,
     vICMS: 0,
     vFCPUFDest: 0,
@@ -370,9 +443,16 @@ export function applyTaxRuleToDetBlock(
     if (typeof aliquotaIcms === "number") {
       const previous = out;
       out = replaceTagValue(out, /(<ICMS[^>]*>[\s\S]*?<pICMS>)[^<]+(<\/pICMS>)/i, formatPercent(aliquotaIcms));
-      out = replaceTagValue(out, /(<ICMS[^>]*>[\s\S]*?<vBC>)[^<]+(<\/vBC>)/i, formatValue(vProd));
-      const vICMS = calculateTax(vProd, aliquotaIcms);
+    const hasIcmsAliquota = aliquotaIcms > 0;
+    const icmsBase = hasIcmsAliquota ? vProd : 0;
+    out = replaceTagValue(
+      out,
+      /(<ICMS[^>]*>[\s\S]*?<vBC>)[^<]+(<\/vBC>)/i,
+      formatValue(icmsBase)
+    );
+    const vICMS = hasIcmsAliquota ? calculateTax(vProd, aliquotaIcms) : 0;
       out = replaceTagValue(out, /(<ICMS[^>]*>[\s\S]*?<vICMS>)[^<]+(<\/vICMS>)/i, formatValue(vICMS));
+    totals.vBC = icmsBase;
       totals.vICMS = vICMS;
       if (out !== previous) {
         const tipo = intraEstadual ? "intra" : `inter ${ufEmit}→${ufDest}`;
@@ -415,7 +495,14 @@ export function applyTaxRuleToDetBlock(
       typeof pInternaDest === "number" &&
       typeof pInterestadual === "number"
     ) {
+      const hadIcmsUfDest = /<ICMSUFDest[^>]*>[\s\S]*?<\/ICMSUFDest>/i.test(out);
+      out = ensureIcmsUfDestBlock(out);
+      if (!hadIcmsUfDest && /<ICMSUFDest[^>]*>[\s\S]*?<\/ICMSUFDest>/i.test(out)) {
+        logs.push("DIFAL: bloco <ICMSUFDest> criado automaticamente para operação interestadual.");
+      }
+
       const vBCUFDest = vProd;
+      const vBCFCPUFDest = vBCUFDest;
       const pDifal = Math.max(pInternaDest - pInterestadual, 0);
       const pPartDest = 100; // desde 2019, partilha integral para destino
       const vFCPUFDest = calculateTax(vBCUFDest, pFcpDest);
@@ -428,6 +515,11 @@ export function applyTaxRuleToDetBlock(
         out,
         /(<ICMSUFDest[^>]*>[\s\S]*?<vBCUFDest>)[^<]+(<\/vBCUFDest>)/i,
         formatValue(vBCUFDest)
+      );
+      out = replaceTagValue(
+        out,
+        /(<ICMSUFDest[^>]*>[\s\S]*?<vBCFCPUFDest>)[^<]+(<\/vBCFCPUFDest>)/i,
+        formatValue(vBCFCPUFDest)
       );
       out = replaceTagValue(
         out,
@@ -490,8 +582,14 @@ export function applyTaxRuleToDetBlock(
   if (typeof rule.ipi.aliquota === "number") {
     const previous = out;
     out = replaceTagValue(out, /(<IPI[^>]*>[\s\S]*?<pIPI>)[^<]+(<\/pIPI>)/i, formatPercent(rule.ipi.aliquota));
-    out = replaceTagValue(out, /(<IPI[^>]*>[\s\S]*?<vBC>)[^<]+(<\/vBC>)/i, formatValue(vProd));
-    const vIPI = calculateTax(vProd, rule.ipi.aliquota);
+    const hasIpiAliquota = rule.ipi.aliquota > 0;
+    const ipiBase = hasIpiAliquota ? vProd : 0;
+    out = replaceTagValue(
+      out,
+      /(<IPI[^>]*>[\s\S]*?<vBC>)[^<]+(<\/vBC>)/i,
+      formatValue(ipiBase)
+    );
+    const vIPI = hasIpiAliquota ? calculateTax(vProd, rule.ipi.aliquota) : 0;
     out = replaceTagValue(out, /(<IPI[^>]*>[\s\S]*?<vIPI>)[^<]+(<\/vIPI>)/i, formatValue(vIPI));
     totals.vIPI = vIPI;
     if (out !== previous) logs.push(`IPI pIPI -> ${formatPercent(rule.ipi.aliquota)}`);
@@ -511,8 +609,10 @@ export function applyTaxRuleToDetBlock(
   if (typeof rule.pis.aliquota === "number") {
     const previous = out;
     out = replaceTagValue(out, /(<PIS[^>]*>[\s\S]*?<pPIS>)[^<]+(<\/pPIS>)/i, formatPercent(rule.pis.aliquota));
-    out = replaceTagValue(out, /(<PIS[^>]*>[\s\S]*?<vBC>)[^<]+(<\/vBC>)/i, formatValue(vProd));
-    const vPIS = calculateTax(vProd, rule.pis.aliquota);
+    const hasPisAliquota = rule.pis.aliquota > 0;
+    const pisBase = hasPisAliquota ? vProd : 0;
+    out = replaceTagValue(out, /(<PIS[^>]*>[\s\S]*?<vBC>)[^<]+(<\/vBC>)/i, formatValue(pisBase));
+    const vPIS = hasPisAliquota ? calculateTax(vProd, rule.pis.aliquota) : 0;
     out = replaceTagValue(out, /(<PIS[^>]*>[\s\S]*?<vPIS>)[^<]+(<\/vPIS>)/i, formatValue(vPIS));
     totals.vPIS = vPIS;
     if (out !== previous) logs.push(`PIS pPIS -> ${formatPercent(rule.pis.aliquota)}`);
@@ -527,8 +627,10 @@ export function applyTaxRuleToDetBlock(
   if (typeof rule.cofins.aliquota === "number") {
     const previous = out;
     out = replaceTagValue(out, /(<COFINS[^>]*>[\s\S]*?<pCOFINS>)[^<]+(<\/pCOFINS>)/i, formatPercent(rule.cofins.aliquota));
-    out = replaceTagValue(out, /(<COFINS[^>]*>[\s\S]*?<vBC>)[^<]+(<\/vBC>)/i, formatValue(vProd));
-    const vCOFINS = calculateTax(vProd, rule.cofins.aliquota);
+    const hasCofinsAliquota = rule.cofins.aliquota > 0;
+    const cofinsBase = hasCofinsAliquota ? vProd : 0;
+    out = replaceTagValue(out, /(<COFINS[^>]*>[\s\S]*?<vBC>)[^<]+(<\/vBC>)/i, formatValue(cofinsBase));
+    const vCOFINS = hasCofinsAliquota ? calculateTax(vProd, rule.cofins.aliquota) : 0;
     out = replaceTagValue(out, /(<COFINS[^>]*>[\s\S]*?<vCOFINS>)[^<]+(<\/vCOFINS>)/i, formatValue(vCOFINS));
     totals.vCOFINS = vCOFINS;
     if (out !== previous) logs.push(`COFINS pCOFINS -> ${formatPercent(rule.cofins.aliquota)}`);
@@ -548,32 +650,150 @@ export function applyTaxRuleToDetBlock(
   const cfopItem = readTag(out, "CFOP");
   const isVenda = VENDAS_CFOP.includes(cfopItem);
   const baseIbs = isVenda ? vProd : parseNumberTag(out, "vBC") || vProd;
+  const effectivePIbsUf = isEducationalIbsCbsPeriod
+    ? 0.1
+    : typeof rule.ibsCbs.pIBSUF === "number"
+      ? rule.ibsCbs.pIBSUF
+      : null;
+  const effectivePIbsMun = isEducationalIbsCbsPeriod
+    ? 0
+    : typeof rule.ibsCbs.pIBSMun === "number"
+      ? rule.ibsCbs.pIBSMun
+      : null;
+  const effectivePCbs = isEducationalIbsCbsPeriod
+    ? 0.9
+    : typeof rule.ibsCbs.pCBS === "number"
+      ? rule.ibsCbs.pCBS
+      : null;
+
   out = replaceTagValue(
     out,
     /(<IBSCBS[^>]*>[\s\S]*?<vBC>)[^<]+(<\/vBC>)/i,
     formatValue(baseIbs)
   );
-  if (typeof rule.ibsCbs.pIBSUF === "number") {
-    out = replaceTagValue(out, /(<IBSCBS[^>]*>[\s\S]*?<pIBSUF>)[^<]+(<\/pIBSUF>)/i, formatPercent(rule.ibsCbs.pIBSUF));
-    const vIBSUF = calculateTax(baseIbs, rule.ibsCbs.pIBSUF);
+  if (typeof effectivePIbsUf === "number") {
+    out = replaceTagValue(
+      out,
+      /(<IBSCBS[^>]*>[\s\S]*?<pIBSUF>)[^<]+(<\/pIBSUF>)/i,
+      formatPercent(effectivePIbsUf)
+    );
+    const vIBSUF = calculateTax(baseIbs, effectivePIbsUf);
     out = replaceTagValue(out, /(<IBSCBS[^>]*>[\s\S]*?<vIBSUF>)[^<]+(<\/vIBSUF>)/i, formatValue(vIBSUF));
     totals.vIBSUF = vIBSUF;
   }
-  if (typeof rule.ibsCbs.pIBSMun === "number") {
-    out = replaceTagValue(out, /(<IBSCBS[^>]*>[\s\S]*?<pIBSMun>)[^<]+(<\/pIBSMun>)/i, formatPercent(rule.ibsCbs.pIBSMun));
-    const vIBSMun = calculateTax(baseIbs, rule.ibsCbs.pIBSMun);
+  // Fallback para manter vIBSUF consistente quando a planilha não trouxer pIBSUF.
+  if (totals.vIBSUF === 0 && !isEducationalIbsCbsPeriod) {
+    const pIbsUfFromXml = parseNumberTag(out, "pIBSUF");
+    if (pIbsUfFromXml > 0) {
+      const vIBSUF = calculateTax(baseIbs, pIbsUfFromXml);
+      out = replaceTagValue(
+        out,
+        /(<IBSCBS[^>]*>[\s\S]*?<vIBSUF>)[^<]+(<\/vIBSUF>)/i,
+        formatValue(vIBSUF)
+      );
+      totals.vIBSUF = vIBSUF;
+      logs.push(
+        `IBS fallback: vIBSUF recalculado por pIBSUF existente no XML (${formatPercent(
+          pIbsUfFromXml
+        )})`
+      );
+    }
+  }
+  if (typeof effectivePIbsMun === "number") {
+    out = replaceTagValue(
+      out,
+      /(<IBSCBS[^>]*>[\s\S]*?<pIBSMun>)[^<]+(<\/pIBSMun>)/i,
+      formatPercent(effectivePIbsMun)
+    );
+    const vIBSMun = calculateTax(baseIbs, effectivePIbsMun);
     out = replaceTagValue(out, /(<IBSCBS[^>]*>[\s\S]*?<vIBSMun>)[^<]+(<\/vIBSMun>)/i, formatValue(vIBSMun));
     totals.vIBSMun = vIBSMun;
   }
-  totals.vIBS = Number((totals.vIBSUF + totals.vIBSMun).toFixed(2));
-  if (totals.vIBS > 0) {
-    out = replaceTagValue(out, /(<IBSCBS[^>]*>[\s\S]*?<vIBS>)[^<]+(<\/vIBS>)/i, formatValue(totals.vIBS));
+  // Fallback para manter vIBSMun consistente quando a planilha não trouxer pIBSMun.
+  if (totals.vIBSMun === 0 && !isEducationalIbsCbsPeriod) {
+    const pIbsMunFromXml = parseNumberTag(out, "pIBSMun");
+    if (pIbsMunFromXml > 0) {
+      const vIBSMun = calculateTax(baseIbs, pIbsMunFromXml);
+      out = replaceTagValue(
+        out,
+        /(<IBSCBS[^>]*>[\s\S]*?<vIBSMun>)[^<]+(<\/vIBSMun>)/i,
+        formatValue(vIBSMun)
+      );
+      totals.vIBSMun = vIBSMun;
+      logs.push(
+        `IBS fallback: vIBSMun recalculado por pIBSMun existente no XML (${formatPercent(
+          pIbsMunFromXml
+        )})`
+      );
+    }
   }
-  if (typeof rule.ibsCbs.pCBS === "number") {
-    out = replaceTagValue(out, /(<IBSCBS[^>]*>[\s\S]*?<pCBS>)[^<]+(<\/pCBS>)/i, formatPercent(rule.ibsCbs.pCBS));
-    const vCBS = calculateTax(baseIbs, rule.ibsCbs.pCBS);
+  totals.vIBS = Number((totals.vIBSUF + totals.vIBSMun).toFixed(2));
+  out = replaceTagValue(
+    out,
+    /(<IBSCBS[^>]*>[\s\S]*?<vIBS>)[^<]+(<\/vIBS>)/i,
+    formatValue(totals.vIBS)
+  );
+  if (typeof effectivePCbs === "number") {
+    out = replaceTagValue(
+      out,
+      /(<IBSCBS[^>]*>[\s\S]*?<pCBS>)[^<]+(<\/pCBS>)/i,
+      formatPercent(effectivePCbs)
+    );
+    const vCBS = calculateTax(baseIbs, effectivePCbs);
     out = replaceTagValue(out, /(<IBSCBS[^>]*>[\s\S]*?<vCBS>)[^<]+(<\/vCBS>)/i, formatValue(vCBS));
     totals.vCBS = vCBS;
+  }
+  // Fallback: quando a planilha não trouxer pCBS numérico, mas o XML já tiver
+  // pCBS preenchido (ex.: gCBS/pCBS), recalcula vCBS para evitar ficar zerado.
+  if (totals.vCBS === 0 && !isEducationalIbsCbsPeriod) {
+    const pCbsFromXml =
+      parseNumberTag(out, "pCBS") || // primeiro match no bloco IBSCBS
+      parseNumberTag(out, "pCBS".toLowerCase()); // redundância defensiva
+    if (pCbsFromXml > 0) {
+      const vCBS = calculateTax(baseIbs, pCbsFromXml);
+      out = replaceTagValue(
+        out,
+        /(<IBSCBS[^>]*>[\s\S]*?<vCBS>)[^<]+(<\/vCBS>)/i,
+        formatValue(vCBS)
+      );
+      totals.vCBS = vCBS;
+      logs.push(
+        `IBS/CBS fallback: vCBS recalculado por pCBS existente no XML (${formatPercent(
+          pCbsFromXml
+        )})`
+      );
+    }
+  }
+  // Garante preenchimento do grupo gCBS e de vCBS principal, mesmo quando
+  // a regra não traz alíquota (valor padrão 0.00).
+  {
+    const vCbsValue = formatValue(totals.vCBS);
+    out = replaceTagValue(
+      out,
+      /(<IBSCBS[^>]*>[\s\S]*?<vCBS>)[^<]+(<\/vCBS>)/i,
+      vCbsValue
+    );
+
+    const ibsBlockMatch = out.match(/<IBSCBS[^>]*>[\s\S]*?<\/IBSCBS>/i);
+    if (ibsBlockMatch) {
+      let ibsBlock = ensureGCbsBlock(ibsBlockMatch[0]);
+      const gCbsMatch = ibsBlock.match(/<gCBS[^>]*>[\s\S]*?<\/gCBS>/i);
+      if (gCbsMatch) {
+        let gCbsBlock = gCbsMatch[0];
+        gCbsBlock = setGCbsTagValue(gCbsBlock, "vDif", "0.00");
+        gCbsBlock = setGCbsTagValue(gCbsBlock, "vDevTrib", "0.00");
+        gCbsBlock = setGCbsTagValue(gCbsBlock, "vCBS", vCbsValue);
+        gCbsBlock = setGCbsTagValue(gCbsBlock, "vCredPres", "0.00");
+        gCbsBlock = setGCbsTagValue(gCbsBlock, "vCredPresCondSus", "0.00");
+        ibsBlock = ibsBlock.replace(gCbsMatch[0], gCbsBlock);
+        out = out.replace(ibsBlockMatch[0], ibsBlock);
+      }
+    }
+  }
+  if (isEducationalIbsCbsPeriod) {
+    logs.push(
+      "IBS/CBS fase educativa (2025-2026): alíquotas aplicadas pIBSUF=0.1000, pIBSMun=0.0000, pCBS=0.9000."
+    );
   }
   totals.vBCIBSCBS = baseIbs;
 

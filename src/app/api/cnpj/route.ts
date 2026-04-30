@@ -51,17 +51,17 @@ function resolveInscricaoEstadual(data: BrasilApiResponse): string {
 }
 
 async function resolveMunicipioIbgeCode(
-  primaryCode: string | undefined,
-  fallbackCode: string | undefined,
-  cep: string | undefined
+  primaryCode: unknown,
+  fallbackCode: unknown,
+  cep: unknown
 ): Promise<string> {
-  const primary = (primaryCode || "").replace(/\D/g, "");
+  const primary = String(primaryCode ?? "").replace(/\D/g, "");
   if (primary.length === 7) return primary;
 
-  const fallback = (fallbackCode || "").replace(/\D/g, "");
+  const fallback = String(fallbackCode ?? "").replace(/\D/g, "");
   if (fallback.length === 7) return fallback;
 
-  const cepLimpo = (cep || "").replace(/\D/g, "");
+  const cepLimpo = String(cep ?? "").replace(/\D/g, "");
   if (cepLimpo.length !== 8) return "";
 
   try {

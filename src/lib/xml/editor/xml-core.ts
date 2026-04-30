@@ -475,6 +475,63 @@ function onlyDigits(value: string | null | undefined): string {
   return (value || "").replace(/\D/g, "");
 }
 
+const FALLBACK_FAKE_PHONE = "11999999999";
+
+function resolvePhoneForXml(phoneFromScenario: string | null | undefined): {
+  phone: string;
+  source: "scenario" | "fake";
+} {
+  const normalized = onlyDigits(phoneFromScenario);
+  if (normalized.length >= 10 && normalized.length <= 13) {
+    return { phone: normalized, source: "scenario" };
+  }
+  return { phone: FALLBACK_FAKE_PHONE, source: "fake" };
+}
+
+function ensurePhoneTagInAddress(
+  xml: string,
+  addressTag: "enderEmit" | "enderDest" | "enderReme",
+  phone: string
+): { xml: string; changed: boolean } {
+  const blockRegex = new RegExp(
+    `(<${addressTag}[^>]*>[\\s\\S]*?)(<\\/${addressTag}>)`,
+    "i"
+  );
+  const blockMatch = xml.match(blockRegex);
+  if (!blockMatch) return { xml, changed: false };
+
+  const openBlock = blockMatch[1];
+  const closeBlock = blockMatch[2];
+
+  if (/<fone>[^<]*<\/fone>/i.test(openBlock)) {
+    const currentPhoneMatch = openBlock.match(/<fone>([^<]*)<\/fone>/i);
+    const currentDigits = onlyDigits(currentPhoneMatch?.[1]);
+    if (currentDigits === phone) return { xml, changed: false };
+
+    const updatedBlock = openBlock.replace(
+      /<fone>[^<]*<\/fone>/i,
+      `<fone>${phone}</fone>`
+    );
+    return { xml: xml.replace(blockRegex, `${updatedBlock}${closeBlock}`), changed: true };
+  }
+
+  const updatedBlock = `${openBlock}<fone>${phone}</fone>`;
+  return { xml: xml.replace(blockRegex, `${updatedBlock}${closeBlock}`), changed: true };
+}
+
+function syncIdeCDvFromAccessKey(
+  xml: string,
+  novaChave: string
+): { xml: string; changed: boolean } {
+  const dv = (novaChave || "").slice(-1);
+  if (!/^\d$/.test(dv)) return { xml, changed: false };
+
+  const cDvRegex = /(<ide[^>]*>[\s\S]*?<cDV>)[^<]+(<\/cDV>)/i;
+  if (!cDvRegex.test(xml)) return { xml, changed: false };
+
+  return { xml: xml.replace(cDvRegex, `$1${dv}$2`), changed: true };
+}
+
 function isIeCompatibleWithUf(ie: string | null | undefined, uf: string | null | undefined): boolean {
   const ufNorm = (uf || "").trim().toUpperCase();
   const ieRaw = (ie || "").trim();
@@ -748,6 +805,51 @@ function collectGeographicFiscalWarnings(xml: string): string[] {
 }
 
 /**
+ * Avisos de coerência para PIS/COFINS em CST sem incidência.
+ * Ex.: CST 08 com base preenchida e alíquota zerada pode gerar alertas.
+ */
+function collectPisCofinsConsistencyWarnings(xml: string): string[] {
+  const warnings: string[] = [];
+  const semIncidenciaCst = new Set(["04", "06", "07", "08", "09"]);
+  const detBlocks = xml.match(XML_STRUCTURE.DET_BLOCK) || [];
+
+  const collectForTax = (
+    detBlock: string,
+    taxTag: "PIS" | "COFINS",
+    aliqTag: "pPIS" | "pCOFINS"
+  ) => {
+    const taxBlockRegex = new RegExp(`<${taxTag}[^>]*>[\\s\\S]*?<\\/${taxTag}>`, "gi");
+    const taxBlocks = detBlock.match(taxBlockRegex) || [];
+
+    for (const taxBlock of taxBlocks) {
+      const cstMatch = taxBlock.match(/<CST>(\d{2})<\/CST>/i);
+      const cst = cstMatch ? cstMatch[1] : "";
+      if (!semIncidenciaCst.has(cst)) continue;
+
+      const vBCMatch = taxBlock.match(/<vBC>([^<]+)<\/vBC>/i);
+      const pAliqMatch = taxBlock.match(new RegExp(`<${aliqTag}>([^<]+)<\\/${aliqTag}>`, "i"));
+      if (!vBCMatch || !pAliqMatch) continue;
+
+      const vBC = parseDecimal(vBCMatch[1]) ?? 0;
+      const pAliq = parseDecimal(pAliqMatch[1]) ?? 0;
+
+      if (vBC > 0 && pAliq === 0) {
+        warnings.push(
+          `${taxTag}: Base preenchida (${vBCMatch[1]}), mas alíquota zerada (${pAliqMatch[1]}) para CST ${cst}. Isso pode estar correto para sem incidência, porém avalie zerar também <vBC> para evitar alertas de validação.`
+        );
+      }
+    }
+  };
+
+  for (const det of detBlocks) {
+    collectForTax(det, "PIS", "pPIS");
+    collectForTax(det, "COFINS", "pCOFINS");
+  }
+
+  return warnings;
+}
+
+/**
  * Mantém `ide/cUF` e `ide/idDest` coerentes com as UFs efetivas de emitente
  * e destinatário após manipulação (requisitos de validação SEFAZ).
  *
@@ -861,6 +963,20 @@ function editarChavesNFe(
       if (regexId.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(regexId, `$1NFe${novaChave}$2`);
         alteracoes.push(`Chave de Acesso ID alterada para: ${novaChave}`);
+      }
+      const cDvSync = syncIdeCDvFromAccessKey(xmlEditado, novaChave);
+      if (cDvSync.changed) {
+        xmlEditado = cDvSync.xml;
+        alteracoes.push("Identificação: <cDV> sincronizado com a nova chave");
+      }
+      const regexReferenceUri =
+        CHAVE_PATTERNS.SIGNATURE_REFERENCE_URI_NFE(chaveOriginal);
+      if (regexReferenceUri.test(xmlEditado)) {
+        xmlEditado = xmlEditado.replace(
+          regexReferenceUri,
+          `$1${novaChave}$2`
+        );
+        alteracoes.push("Reference URI da assinatura atualizada");
       }
       const regexChNFe = CHAVE_PATTERNS.CH_NFE_TAG(chaveOriginal);
       if (regexChNFe.test(xmlEditado)) {
@@ -1010,6 +1126,20 @@ function editarChavesNFe(
           );
         }
       }
+      const emitPhone = resolvePhoneForXml(novoEmitente.fone);
+      const emitPhoneSync = ensurePhoneTagInAddress(
+        xmlEditado,
+        "enderEmit",
+        emitPhone.phone
+      );
+      if (emitPhoneSync.changed) {
+        xmlEditado = emitPhoneSync.xml;
+        alteracoes.push(
+          emitPhone.source === "scenario"
+            ? `Emitente Endereço: <fone> atualizado para ${emitPhone.phone}`
+            : `Emitente Endereço: <fone> ausente/inválido no cenário, preenchido com telefone fake fixo ${emitPhone.phone}`
+        );
+      }
 
       // Mantém coerência entre UF do emitente e município do fato gerador.
       // Quando o cenário traz cMun IBGE do emitente, atualizamos também <cMunFG>.
@@ -1118,6 +1248,20 @@ function editarChavesNFe(
             }
           }
         }
+        const destPhone = resolvePhoneForXml(destAtivo.fone);
+        const destPhoneSync = ensurePhoneTagInAddress(
+          xmlEditado,
+          "enderDest",
+          destPhone.phone
+        );
+        if (destPhoneSync.changed) {
+          xmlEditado = destPhoneSync.xml;
+          alteracoes.push(
+            destPhone.source === "scenario"
+              ? `${tag} Endereço: <fone> atualizado para ${destPhone.phone}`
+              : `${tag} Endereço: <fone> ausente/inválido no cenário, preenchido com telefone fake fixo ${destPhone.phone}`
+          );
+        }
       }
     }
 
@@ -1127,8 +1271,13 @@ function editarChavesNFe(
       alteracoes.push(...ideSync.logs);
     }
     alteracoes.push(...collectGeographicFiscalWarnings(xmlEditado));
+    alteracoes.push(...collectPisCofinsConsistencyWarnings(xmlEditado));
 
     if (produtos && produtos.length > 0) {
+      const dhEmiYear = Number(
+        xmlEditado.match(/<dhEmi>(\d{4})-\d{2}-\d{2}T/i)?.[1] || 0
+      );
+      const isEducationalIbsCbsPeriod = dhEmiYear === 2025 || dhEmiYear === 2026;
       const totaisImpostos = {
         vProd: 0,
         vBC: 0,
@@ -1413,7 +1562,8 @@ function editarChavesNFe(
                   emitUfEfetiva,
                   itemProductOrigin,
                   isContributor,
-                  isFinalConsumer
+                  isFinalConsumer,
+                  isEducationalIbsCbsPeriod
                 );
                 if (taxApplied.applied) {
                   detBlockEditado = taxApplied.detBlock;
@@ -1526,7 +1676,8 @@ function editarChavesNFe(
                   emitUfEfetiva,
                   itemProductOrigin,
                   isContributor,
-                  isFinalConsumer
+                  isFinalConsumer,
+                  isEducationalIbsCbsPeriod
                 );
                 if (taxApplied.applied) {
                   detBlockEditado = taxApplied.detBlock;
@@ -1928,7 +2079,8 @@ function editarChavesCTe(
   novoUF: string | null = null,
   novoEmitente: DadosEmitente | null = null,
   novoDestinatario: DadosDestinatario | null = null,
-  novoDestinatarioRemessa: DadosDestinatario | null = null
+  novoDestinatarioRemessa: DadosDestinatario | null = null,
+  taxRules: NormalizedTaxRule[] | null = null
 ): ResultadoEdicao {
   const alteracoes: string[] = [];
   let xmlEditado = xmlContent;
@@ -1976,6 +2128,15 @@ function editarChavesCTe(
       if (regexChCTe.test(xmlEditado)) {
         xmlEditado = xmlEditado.replace(regexChCTe, `$1${novaChave}$2`);
         alteracoes.push("protCTe/infProt/chCTe sincronizado");
+      }
+      const regexReferenceUriCte =
+        CHAVE_PATTERNS.SIGNATURE_REFERENCE_URI_CTE(chaveOriginal);
+      if (regexReferenceUriCte.test(xmlEditado)) {
+        xmlEditado = xmlEditado.replace(
+          regexReferenceUriCte,
+          `$1${novaChave}$2`
+        );
+        alteracoes.push("Reference URI da assinatura do CTe atualizada");
       }
     }
     const regexChaveAtual = /<infNFe[^>]*>[\s\S]*?<chave>([^<]+)<\/chave>/i;
@@ -2130,6 +2291,20 @@ function editarChavesCTe(
             }
           }
         }
+        const emitCtePhone = resolvePhoneForXml(novoDestinatarioRemessa.fone);
+        const emitCtePhoneSync = ensurePhoneTagInAddress(
+          xmlEditado,
+          "enderEmit",
+          emitCtePhone.phone
+        );
+        if (emitCtePhoneSync.changed) {
+          xmlEditado = emitCtePhoneSync.xml;
+          alteracoes.push(
+            emitCtePhone.source === "scenario"
+              ? `Emitente Endereço (CTe): <fone> atualizado para ${emitCtePhone.phone}`
+              : `Emitente Endereço (CTe): <fone> ausente/inválido no cenário, preenchido com telefone fake fixo ${emitCtePhone.phone}`
+          );
+        }
       }
       for (const { campo, valor } of camposEnderReme) {
         if (valor && valor.trim() !== "") {
@@ -2144,6 +2319,20 @@ function editarChavesCTe(
             );
           }
         }
+      }
+      const remPhone = resolvePhoneForXml(emitenteCte.fone);
+      const remPhoneSync = ensurePhoneTagInAddress(
+        xmlEditado,
+        "enderReme",
+        remPhone.phone
+      );
+      if (remPhoneSync.changed) {
+        xmlEditado = remPhoneSync.xml;
+        alteracoes.push(
+          remPhone.source === "scenario"
+            ? `Remetente Endereço: <fone> atualizado para ${remPhone.phone}`
+            : `Remetente Endereço: <fone> ausente/inválido no cenário, preenchido com telefone fake fixo ${remPhone.phone}`
+        );
       }
 
       // CT-e deve iniciar no mesmo local fiscal de saída do emitente manipulado.
@@ -2221,6 +2410,163 @@ function editarChavesCTe(
             alteracoes.push(
               `Destinatário Endereço (CTe): <${campo}> alterado para ${valor}`
             );
+          }
+        }
+      }
+      const destCtePhone = resolvePhoneForXml(novoDestinatario.fone);
+      const destCtePhoneSync = ensurePhoneTagInAddress(
+        xmlEditado,
+        "enderDest",
+        destCtePhone.phone
+      );
+      if (destCtePhoneSync.changed) {
+        xmlEditado = destCtePhoneSync.xml;
+        alteracoes.push(
+          destCtePhone.source === "scenario"
+            ? `Destinatário Endereço (CTe): <fone> atualizado para ${destCtePhone.phone}`
+            : `Destinatário Endereço (CTe): <fone> ausente/inválido no cenário, preenchido com telefone fake fixo ${destCtePhone.phone}`
+        );
+      }
+    }
+    // ============================================================
+    // Ajuste do primeiro dígito do CFOP no CT-e conforme operação
+    // dentro/fora do estado:
+    //  - 1xxx/5xxx => dentro do estado
+    //  - 2xxx/6xxx => fora do estado
+    //  - 3xxx/7xxx (exterior) não altera
+    // ============================================================
+    {
+      const ufOrigem =
+        xmlEditado.match(/<UFIni>([^<]+)<\/UFIni>/i)?.[1]?.trim().toUpperCase() ||
+        xmlEditado.match(/<UFEnv>([^<]+)<\/UFEnv>/i)?.[1]?.trim().toUpperCase() ||
+        xmlEditado.match(/<enderReme[^>]*>[\s\S]*?<UF>([^<]+)<\/UF>/i)?.[1]?.trim().toUpperCase() ||
+        xmlEditado.match(/<enderEmit[^>]*>[\s\S]*?<UF>([^<]+)<\/UF>/i)?.[1]?.trim().toUpperCase() ||
+        "";
+
+      const ufDestino =
+        xmlEditado.match(/<UFFim>([^<]+)<\/UFFim>/i)?.[1]?.trim().toUpperCase() ||
+        xmlEditado.match(/<enderDest[^>]*>[\s\S]*?<UF>([^<]+)<\/UF>/i)?.[1]?.trim().toUpperCase() ||
+        "";
+
+      if (ufOrigem && ufDestino) {
+        const mesmoEstado = ufOrigem === ufDestino;
+        const cfopRegex = /<CFOP>(\d{4})<\/CFOP>/gi;
+        const cfopsAlterados = new Set<string>();
+
+        xmlEditado = xmlEditado.replace(cfopRegex, (full, cfopAtual: string) => {
+          const primeiro = cfopAtual[0];
+          if (primeiro === "3" || primeiro === "7") return full;
+
+          let novoPrimeiro: string | null = null;
+          if (primeiro === "1" || primeiro === "2") {
+            novoPrimeiro = mesmoEstado ? "1" : "2";
+          } else if (primeiro === "5" || primeiro === "6") {
+            novoPrimeiro = mesmoEstado ? "5" : "6";
+          }
+          if (!novoPrimeiro || novoPrimeiro === primeiro) return full;
+
+          const cfopNovo = `${novoPrimeiro}${cfopAtual.slice(1)}`;
+          cfopsAlterados.add(`${cfopAtual}→${cfopNovo}`);
+          return `<CFOP>${cfopNovo}</CFOP>`;
+        });
+
+        if (cfopsAlterados.size > 0) {
+          const tipo = mesmoEstado
+            ? `intra-estadual (${ufOrigem})`
+            : `interestadual (${ufOrigem}→${ufDestino})`;
+          alteracoes.push(
+            `CTe CFOP ajustado para operação ${tipo}: ${[...cfopsAlterados].join(", ")}`
+          );
+        }
+      }
+    }
+    // ============================================================
+    // Recalcula ICMS do CT-e com base na planilha (origem + UF destino),
+    // seguindo o mesmo padrão da NFe:
+    // - pICMS conforme regra/estado
+    // - vBC só preenchida quando alíquota > 0
+    // - vICMS recalculado
+    // ============================================================
+    if (taxRules && taxRules.length > 0) {
+      const ufOrigem =
+        xmlEditado.match(/<UFIni>([^<]+)<\/UFIni>/i)?.[1]?.trim().toUpperCase() ||
+        xmlEditado.match(/<UFEnv>([^<]+)<\/UFEnv>/i)?.[1]?.trim().toUpperCase() ||
+        xmlEditado.match(/<enderReme[^>]*>[\s\S]*?<UF>([^<]+)<\/UF>/i)?.[1]?.trim().toUpperCase() ||
+        xmlEditado.match(/<enderEmit[^>]*>[\s\S]*?<UF>([^<]+)<\/UF>/i)?.[1]?.trim().toUpperCase() ||
+        "";
+      const ufDestino =
+        xmlEditado.match(/<UFFim>([^<]+)<\/UFFim>/i)?.[1]?.trim().toUpperCase() ||
+        xmlEditado.match(/<enderDest[^>]*>[\s\S]*?<UF>([^<]+)<\/UF>/i)?.[1]?.trim().toUpperCase() ||
+        "";
+
+      const cfopCte = (xmlEditado.match(/<CFOP>(\d{4})<\/CFOP>/i)?.[1] || "").trim();
+      const ieDest = (xmlEditado.match(/<dest[^>]*>[\s\S]*?<IE>([^<]+)<\/IE>/i)?.[1] || "").trim();
+      const isContributorDest = !!ieDest && ieDest.toUpperCase() !== "ISENTO";
+
+      if (ufOrigem && ufDestino) {
+        const transactionType = mapTransactionTypeFromCfop(
+          cfopCte || "5353",
+          isContributorDest
+        );
+        const matchedRule = findBestTaxRule(taxRules, {
+          destinationUf: ufDestino,
+          transactionType,
+          origin: ufOrigem,
+          isContributor: isContributorDest,
+        });
+
+        if (matchedRule) {
+          let ufRule = matchedRule.icmsByUf[ufDestino] || null;
+          let ufRuleUsed = ufDestino;
+          if (!ufRule) {
+            const entries = Object.entries(matchedRule.icmsByUf);
+            if (entries.length > 0) {
+              ufRule = entries[0][1];
+              ufRuleUsed = entries[0][0];
+              alteracoes.push(
+                `CTe ICMS aviso: UF destino ${ufDestino} sem coluna específica na regra "${matchedRule.ruleName}", usando fallback ${ufRuleUsed}.`
+              );
+            }
+          }
+
+          if (ufRule) {
+            const intra = ufOrigem === ufDestino;
+            const aliquotaRaw = intra ? ufRule.PICMS_INTERNAL : ufRule.PICMS_INTERSTATE;
+            const aliquota =
+              typeof aliquotaRaw === "number" && Number.isFinite(aliquotaRaw)
+                ? aliquotaRaw
+                : null;
+
+            if (aliquota !== null) {
+              const baseAtual =
+                parseDecimal(
+                  xmlEditado.match(/<ICMS[^>]*>[\s\S]*?<vBC>([^<]+)<\/vBC>/i)?.[1] || ""
+                ) ??
+                parseDecimal(xmlEditado.match(/<vTPrest>([^<]+)<\/vTPrest>/i)?.[1] || "") ??
+                0;
+              const baseIcms = aliquota > 0 ? baseAtual : 0;
+              const vIcms = Number(((baseIcms * aliquota) / 100).toFixed(2));
+
+              const before = xmlEditado;
+              xmlEditado = xmlEditado.replace(
+                /(<ICMS[^>]*>[\s\S]*?<pICMS>)[^<]+(<\/pICMS>)/i,
+                `$1${aliquota.toFixed(2)}$2`
+              );
+              xmlEditado = xmlEditado.replace(
+                /(<ICMS[^>]*>[\s\S]*?<vBC>)[^<]+(<\/vBC>)/i,
+                `$1${baseIcms.toFixed(2)}$2`
+              );
+              xmlEditado = xmlEditado.replace(
+                /(<ICMS[^>]*>[\s\S]*?<vICMS>)[^<]+(<\/vICMS>)/i,
+                `$1${vIcms.toFixed(2)}$2`
+              );
+
+              if (xmlEditado !== before) {
+                alteracoes.push(
+                  `CTe ICMS recalculado pela planilha (${matchedRule.ruleName}, UF=${ufRuleUsed}): pICMS=${aliquota.toFixed(2)}, vBC=${baseIcms.toFixed(2)}, vICMS=${vIcms.toFixed(2)}.`
+                );
+              }
+            }
           }
         }
       }
@@ -2392,7 +2738,8 @@ export function editarChavesXml(
       novoUF,
       novoEmitente,
       novoDestinatario,
-      novoDestinatarioRemessa
+      novoDestinatarioRemessa,
+      taxRules
     );
   } else if (xmlContent.includes("<nfeProc") || xmlContent.includes("<NFe")) {
     return editarChavesNFe(

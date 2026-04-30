@@ -77,6 +77,14 @@ export const CHAVE_PATTERNS = {
   /** Tag refNFe (referência) */
   REF_NFE_TAG: (chave: string) =>
     new RegExp(`(<refNFe>)${chave}(</refNFe>)`, "g"),
+
+  /** Atributo URI da assinatura (SignedInfo/Reference) apontando para NFe */
+  SIGNATURE_REFERENCE_URI_NFE: (chave: string) =>
+    new RegExp(`(<Reference[^>]*\\sURI=["']#NFe)${chave}(["'][^>]*>)`, "g"),
+
+  /** Atributo URI da assinatura (SignedInfo/Reference) apontando para CTe */
+  SIGNATURE_REFERENCE_URI_CTE: (chave: string) =>
+    new RegExp(`(<Reference[^>]*\\sURI=["']#CTe)${chave}(["'][^>]*>)`, "g"),
 } as const;
 
 // ============================================================================
