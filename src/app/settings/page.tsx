@@ -7,6 +7,7 @@ import type { UserPermissions } from "@/lib/auth/rbac";
 import { SettingsHeader } from "./_components/SettingsHeader";
 import { ProfilesCard } from "./_components/ProfilesCard";
 import { ScenariosCard } from "./_components/ScenariosCard";
+import { TaxRulesCard } from "./_components/TaxRulesCard";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { FileCog } from "lucide-react";
 
@@ -28,28 +29,86 @@ async function ScenariosSection({
   profileName: string | null | undefined;
   permissions: UserPermissions;
 }) {
+  const profileTaxRulesDelegate = (db as unknown as {
+    profileTaxRules?: {
+      findUnique: (args: unknown) => Promise<unknown>;
+    };
+  }).profileTaxRules;
+
   const scenarios: ScenarioWithRelations[] = profileId
     ? await db.scenario.findMany({
-        where: { profileId, deletedAt: null },
+        where: {
+          profileId,
+          deletedAt: null,
+        },
         orderBy: { name: "asc" },
         include: {
           ScenarioEmitente: true,
           ScenarioDestinatario: true,
           ScenarioProduto: true,
-          ScenarioImposto: true,
-          CstMapping: true,
-          TaxReformRule: true,
         },
       })
     : [];
 
+  const taxRulesRecord = profileId
+    ? ((await profileTaxRulesDelegate?.findUnique({
+        where: { profileId },
+        select: {
+          fileName: true,
+          totalRules: true,
+          uploadedAt: true,
+          rules: true,
+        },
+      })) as
+        | {
+            fileName: string;
+            totalRules: number;
+            uploadedAt: Date;
+            rules: unknown;
+          }
+        | null)
+    : null;
+
+  const taxRulesInfo = taxRulesRecord
+    ? {
+        fileName: taxRulesRecord.fileName,
+        totalRules: taxRulesRecord.totalRules,
+        uploadedAt: taxRulesRecord.uploadedAt,
+      }
+    : null;
+
+  const taxRuleNames: string[] = (() => {
+    if (!taxRulesRecord || !Array.isArray(taxRulesRecord.rules)) return [];
+    const names = new Set<string>();
+    for (const r of taxRulesRecord.rules as Array<{ ruleName?: unknown }>) {
+      const n = typeof r?.ruleName === "string" ? r.ruleName.trim() : "";
+      if (n) names.add(n);
+    }
+    return Array.from(names).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base" })
+    );
+  })();
+
+  const colSpanClass = permissions.canViewProfiles
+    ? "md:col-span-8"
+    : "md:col-span-12";
+
   return (
-    <ScenariosCard
-      scenarios={scenarios}
-      selectedProfileId={profileId}
-      selectedProfileName={profileName}
-      permissions={permissions}
-    />
+    <div className={`${colSpanClass} flex flex-col gap-6`}>
+      <TaxRulesCard
+        profileId={profileId}
+        profileName={profileName}
+        canManageScenarios={permissions.canManageScenarios}
+        taxRulesInfo={taxRulesInfo}
+      />
+      <ScenariosCard
+        scenarios={scenarios}
+        selectedProfileId={profileId}
+        selectedProfileName={profileName}
+        permissions={permissions}
+        taxRuleNames={taxRuleNames}
+      />
+    </div>
   );
 }
 

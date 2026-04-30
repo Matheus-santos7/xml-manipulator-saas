@@ -39,9 +39,8 @@ export function editarArquivosEAtualizarReferencias(args: {
     params.novoEmitente,
     params.novoDestinatario,
     params.produtos,
-    params.cstMappings,
-    params.taxReformRule,
-    params.impostosData
+    params.taxRules,
+    params.novoDestinatarioRemessa
   );
 
   let totalEditados = 0;

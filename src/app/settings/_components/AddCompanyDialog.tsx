@@ -50,6 +50,7 @@ export function AddCompanyDialog() {
   const [bairro, setBairro] = useState("");
   const [cidade, setCidade] = useState("");
   const [uf, setUf] = useState("");
+  const [cMun, setCMun] = useState("");
 
   function resetForm() {
     setName("");
@@ -62,6 +63,7 @@ export function AddCompanyDialog() {
     setBairro("");
     setCidade("");
     setUf("");
+    setCMun("");
   }
 
   async function handleSearchCnpj() {
@@ -85,6 +87,7 @@ export function AddCompanyDialog() {
           setBairro(data.xBairro || "");
           setCidade(data.xMun || "");
           setUf(data.UF || "");
+          setCMun(String(data.cMun || ""));
           if (data.CEP) {
             setCep(formatCep(data.CEP));
           }
@@ -150,6 +153,7 @@ export function AddCompanyDialog() {
           bairro: bairro.trim() || undefined,
           cidade: cidade.trim() || undefined,
           uf: uf || undefined,
+          cMun: cMun || undefined,
         },
       });
 
@@ -178,7 +182,10 @@ export function AddCompanyDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button
+          size="sm"
+          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-sm"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nova empresa
         </Button>
@@ -231,13 +238,10 @@ export function AddCompanyDialog() {
             {/* Dados básicos */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome Fantasia *</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nome da empresa"
-                />
+                <Label>Nome da Empresa *</Label>
+                <div className="h-10 px-3 rounded-md border bg-muted/30 text-sm flex items-center">
+                  {name || "Será preenchido após pesquisar o CNPJ"}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="razaoSocial">Razão Social</Label>

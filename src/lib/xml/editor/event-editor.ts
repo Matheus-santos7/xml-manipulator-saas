@@ -35,9 +35,6 @@ export function editarCancelamento(
     null,
     null,
     null,
-    null,
-    null,
-    null,
     null
   );
 }

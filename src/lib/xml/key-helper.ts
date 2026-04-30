@@ -45,7 +45,7 @@ export function calcularDvChave(chave: string): string {
 }
 
 /**
- * Interface para informações de documento fiscal para mapeamento
+ * Interface para informações de documento para mapeamento
  */
 export interface DocumentoInfo {
   doc_type: "NFe" | "CTe" | "Inutilizacao";

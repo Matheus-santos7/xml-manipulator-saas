@@ -2,10 +2,11 @@
  * Editor em Lote de Chaves XML
  *
  * Módulo para edição de múltiplos arquivos XML em lote.
- * Processa listas de arquivos, aplicando mapeamentos de chaves e regras de reforma tributária.
+ * Processa listas de arquivos, aplicando mapeamentos de chaves.
  */
 
 import type { ChaveMapping, ReferenceMapping } from "@/lib/xml";
+import type { NormalizedTaxRule } from "@/lib/tax-rules/types";
 import { editarChavesXml } from "./xml-core";
 import type {
   DadosEmitente,
@@ -13,7 +14,6 @@ import type {
   DadosProduto,
   ResultadoEdicao,
 } from "./types";
-import type { CstMappingData, TaxReformRuleData, ImpostosData } from "./taxes";
 
 /**
  * Edita as chaves de acesso em múltiplos arquivos XML
@@ -22,9 +22,6 @@ import type { CstMappingData, TaxReformRuleData, ImpostosData } from "./taxes";
  * - Mapeamentos de chaves
  * - Referências entre notas
  * - Alterações de emitente/destinatário
- * - Impostos padrão
- * - Regras de CST por tipo de operação
- * - Reforma tributária (IBS/CBS)
  */
 export function editarChavesEmLote(
   files: Array<{ name: string; content: string }>,
@@ -39,9 +36,8 @@ export function editarChavesEmLote(
   produtos: Array<
     DadosProduto & { isPrincipal: boolean; ordem: number }
   > | null = null,
-  cstMappings: CstMappingData[] | null = null,
-  taxReformRule: TaxReformRuleData | null = null,
-  impostosData: ImpostosData | null = null
+  taxRules: NormalizedTaxRule[] | null = null,
+  novoDestinatarioRemessa: DadosDestinatario | null = null
 ): ResultadoEdicao[] {
   const resultados: ResultadoEdicao[] = [];
 
@@ -58,9 +54,8 @@ export function editarChavesEmLote(
       novoEmitente,
       novoDestinatario,
       produtos,
-      cstMappings,
-      taxReformRule,
-      impostosData
+      taxRules,
+      novoDestinatarioRemessa
     );
     resultados.push(resultado);
   }

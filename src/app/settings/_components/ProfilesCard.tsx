@@ -8,6 +8,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Building2 } from "lucide-react";
 import { ProfileForm } from "./ProfileCompanyForm";
+import { AddCompanyDialog } from "./AddCompanyDialog";
 
 interface ProfileSummary {
   id: string;
@@ -37,8 +38,8 @@ export function ProfilesCard({
           </CardTitle>
           <CardDescription>Selecione para ver os cenários</CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 min-h-0 p-0">
-          <ScrollArea className="h-[min(800px,calc(100vh-14rem))]">
+        <CardContent className="flex-1 min-h-0 p-0 flex flex-col">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="space-y-2 p-6 pt-0">
               <ProfileForm
                 profiles={profiles}
@@ -47,6 +48,11 @@ export function ProfilesCard({
               />
             </div>
           </ScrollArea>
+          {canManageProfiles && (
+            <div className="border-t px-6 py-4">
+              <AddCompanyDialog />
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

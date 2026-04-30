@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "SaaS Manipulador de XML",
-  description: "Manipulador fiscal de XMLs",
+  description: "Manipulador de XMLs",
 };
 
 export const dynamic = "force-dynamic";

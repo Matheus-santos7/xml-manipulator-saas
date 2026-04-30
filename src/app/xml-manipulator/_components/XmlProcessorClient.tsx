@@ -92,6 +92,26 @@ export default function XmlProcessorClient({
       if (response.success) {
         if (response.processedFiles) {
           setProcessedData(response.processedFiles);
+          const icmsWarnings = response.processedFiles
+            .flatMap((file) => file.logs ?? [])
+            .filter(
+              (log) =>
+                typeof log === "string" &&
+                log.toLowerCase().includes("icms aviso")
+            );
+          if (icmsWarnings.length > 0) {
+            const exemplos = icmsWarnings
+              .slice(0, 2)
+              .map((w) => `• ${w}`)
+              .join("\n");
+            toast.warning("Atenção: UF não encontrada em regra fiscal", {
+              description:
+                `${icmsWarnings.length} aviso(s) detectado(s) durante a manipulação.\n` +
+                "A regra aplicou fallback de UF em alguns itens.\n\n" +
+                exemplos,
+              duration: 9000,
+            });
+          }
         }
 
         toast.success("Processamento concluído", {

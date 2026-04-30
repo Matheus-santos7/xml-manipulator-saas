@@ -34,17 +34,6 @@ type ScenarioProdutoLike = {
   origem?: string | null;
 } | null;
 
-type ScenarioImpostoLike = {
-  tipoTributacao?: string | null;
-  pFCP?: string | null;
-  pICMS?: string | null;
-  pICMSUFDest?: string | null;
-  pICMSInter?: string | null;
-  pPIS?: string | null;
-  pCOFINS?: string | null;
-  pIPI?: string | null;
-} | null;
-
 type ScenarioForLogging = {
   id: string;
   name: string;
@@ -52,25 +41,16 @@ type ScenarioForLogging = {
   editar_destinatario_pj: boolean;
   editar_destinatario_pf: boolean;
   editar_produtos: boolean;
-  editar_impostos: boolean;
   editar_data: boolean;
   editar_refNFe: boolean;
-  editar_cst: boolean;
-  zerar_ipi_remessa_retorno: boolean;
-  zerar_ipi_venda: boolean;
-  reforma_tributaria: boolean;
   alterar_serie: boolean;
   alterar_cUF: boolean;
-  aplicar_reducao_aliq: boolean;
   nova_serie?: string | null;
   nova_data?: string | null;
   novo_cUF?: string | null;
   ScenarioEmitente?: ScenarioEmitenteLike;
   ScenarioDestinatario?: ScenarioDestinatarioLike;
   ScenarioProduto?: ScenarioProdutoLike[] | ScenarioProdutoLike;
-  ScenarioImposto?: ScenarioImpostoLike;
-  CstMapping?: { length: number } | null;
-  TaxReformRule?: { length: number } | null;
 };
 
 function maskNumericId(value: string | null | undefined): string | null {
@@ -120,22 +100,6 @@ function maskProduto(produto: ScenarioProdutoLike) {
   };
 }
 
-function maskImpostos(impostos: ScenarioImpostoLike) {
-  if (!impostos) return null;
-  return {
-    tipoTributacao: impostos.tipoTributacao ?? null,
-    possuiAliquotasDefinidas: Boolean(
-      impostos.pFCP ||
-        impostos.pICMS ||
-        impostos.pICMSUFDest ||
-        impostos.pICMSInter ||
-        impostos.pPIS ||
-        impostos.pCOFINS ||
-        impostos.pIPI
-    ),
-  };
-}
-
 function buildFilesSummary(files: File[]) {
   const total = files.length;
   const extensions: Record<string, number> = {};
@@ -166,8 +130,6 @@ export function logScenarioAndFiles(
 
   const maskedProdutos = produtos.slice(0, 3).map((p) => maskProduto(p));
 
-  const maskedImpostos = maskImpostos(scenario.ScenarioImposto ?? null);
-
   const filesSummary = buildFilesSummary(files);
 
   console.info("Iniciando processamento de XML com cenário", {
@@ -178,25 +140,16 @@ export function logScenarioAndFiles(
       editar_destinatario_pj: scenario.editar_destinatario_pj,
       editar_destinatario_pf: scenario.editar_destinatario_pf,
       editar_produtos: scenario.editar_produtos,
-      editar_impostos: scenario.editar_impostos,
       editar_data: scenario.editar_data,
       editar_refNFe: scenario.editar_refNFe,
-      editar_cst: scenario.editar_cst,
-      zerar_ipi_remessa_retorno: scenario.zerar_ipi_remessa_retorno,
-      zerar_ipi_venda: scenario.zerar_ipi_venda,
-      reforma_tributaria: scenario.reforma_tributaria,
       alterar_serie: scenario.alterar_serie,
       alterar_cUF: scenario.alterar_cUF,
-      aplicar_reducao_aliq: scenario.aplicar_reducao_aliq,
     },
     scenarioResumo: {
       emitente: maskedEmitente,
       destinatario: maskedDestinatario,
       produtosExemplo: maskedProdutos,
-      impostos: maskedImpostos,
       quantidadeProdutos: produtos.length,
-      quantidadeCstMappings: scenario.CstMapping?.length ?? 0,
-      quantidadeTaxReformRules: scenario.TaxReformRule?.length ?? 0,
     },
     files: filesSummary,
   });

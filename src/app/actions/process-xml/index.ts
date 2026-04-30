@@ -8,14 +8,15 @@ import {
   editarArquivosEAtualizarReferencias,
 } from "@/lib/actions/process-xml";
 import { mascararXmls } from "@/lib/masking/xml-masking";
+import type { Prisma } from "@prisma/client";
 
 /**
  * Função servidor responsável por orquestrar todo o fluxo de processamento de XML:
  *  - validação do cenário e arquivos recebidos do formulário
- *  - busca dos dados completos do cenário no banco (emitente, destinatário, produtos, impostos etc.)
+ *  - busca dos dados completos do cenário no banco (emitente, destinatário e produtos)
  *  - preparação e renomeação inicial dos arquivos
  *  - cálculo de mapeamento de chaves (NFe antiga → nova)
- *  - edição dos XMLs de acordo com o cenário (dados cadastrais, datas, CST, reforma tributária)
+ *  - edição dos XMLs de acordo com o cenário (dados cadastrais e datas)
  *  - montagem do payload final com relatórios e arquivos processados para o frontend.
  *
  */
@@ -93,9 +94,10 @@ export async function processarArquivosXml(formData: FormData) {
       };
     }
 
-    // Carrega o cenário completo do banco, incluindo todas as entidades relacionadas
-    // necessárias para decidir como os XMLs serão transformados.
-    const scenario = await db.scenario.findUnique({
+    // Carrega cenário + relações sem depender do include integral de ProfileTaxRules.
+    // Em ambiente dev, o Prisma Client pode ficar cacheado com colunas antigas
+    // (ex.: headers) e quebrar com P2022 mesmo com DB já migrado.
+    const scenarioBase = await db.scenario.findUnique({
       where: {
         id: scenarioId,
         deletedAt: null,
@@ -104,15 +106,42 @@ export async function processarArquivosXml(formData: FormData) {
         ScenarioEmitente: true,
         ScenarioDestinatario: true,
         ScenarioProduto: true,
-        ScenarioImposto: true,
-        CstMapping: true,
-        TaxReformRule: true,
+        Profile: true,
       },
     });
 
-    if (!scenario) {
+    if (!scenarioBase) {
       return { success: false, message: "Cenário não encontrado." };
     }
+
+    let profileTaxRules: { rules: Prisma.JsonValue | null } | null = null;
+    try {
+      // Caminho padrão (rápido) — funciona quando o client está alinhado.
+      profileTaxRules = await db.profileTaxRules.findUnique({
+        where: { profileId: scenarioBase.profileId },
+        select: { rules: true },
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      const isLegacyHeadersError =
+        msg.includes("ProfileTaxRules.headers") || msg.includes("Argument `headers`");
+      if (!isLegacyHeadersError) throw error;
+
+      // Fallback resiliente para client cacheado em dev:
+      const rows = await db.$queryRawUnsafe<Array<{ rules: Prisma.JsonValue }>>(
+        `SELECT "rules" FROM "ProfileTaxRules" WHERE "profileId" = $1 LIMIT 1`,
+        scenarioBase.profileId
+      );
+      profileTaxRules = rows[0] ? { rules: rows[0].rules } : null;
+    }
+
+    const scenario = {
+      ...scenarioBase,
+      Profile: {
+        ...scenarioBase.Profile,
+        ProfileTaxRules: profileTaxRules,
+      },
+    };
 
     // Ponto único para logging/observabilidade do cenário e arquivos processados.
     if (maskScenarioData) {
@@ -178,7 +207,7 @@ export async function processarArquivosXml(formData: FormData) {
       processedFiles: arquivosEditados.map((file, index) => {
         // Resultado de renomeação para este arquivo específico (se houver)
         const renameInfo = renameMap.get(file.name);
-        // Resultado de edição estrutural de XML (emitente, datas, CST, etc.)
+        // Resultado de edição estrutural de XML (emitente, destinatário, produtos e datas)
         const edicaoInfo = resultadosEdicao[index];
 
         // Array de mensagens human-readable que será exibido na interface

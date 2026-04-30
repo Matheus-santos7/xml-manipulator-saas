@@ -10,26 +10,9 @@ export type SaveScenarioInput = z.infer<typeof scenarioSchema> & {
   emitente?: string | Record<string, unknown>;
   emitenteData?: Record<string, unknown>;
   produto_padrao?: string | Record<string, unknown>;
-  produtoData?: Record<string, unknown>;
-  impostos_padrao?: string | Record<string, unknown>;
-  impostosData?: Record<string, unknown>;
+  produtoData?: Record<string, unknown> | unknown[];
   destinatario?: string | Record<string, unknown>;
   destinatarioData?: Record<string, unknown>;
-  cstMappings?: Array<{
-    tipoOperacao: "VENDA" | "DEVOLUCAO" | "RETORNO" | "REMESSA";
-    icms?: string;
-    ipi?: string;
-    pis?: string;
-    cofins?: string;
-  }>;
-  taxReformRule?: {
-    pIBSUF?: string;
-    pIBSMun?: string;
-    pCBS?: string;
-    vDevTrib?: string;
-    cClassTrib?: string;
-    CST?: string;
-  };
 };
 
 /**
@@ -41,9 +24,6 @@ export type ScenarioWithRelations = Prisma.ScenarioGetPayload<{
     ScenarioEmitente: true;
     ScenarioDestinatario: true;
     ScenarioProduto: true;
-    ScenarioImposto: true;
-    CstMapping: true;
-    TaxReformRule: true;
   };
 }>;
 
@@ -62,6 +42,7 @@ export interface CreateProfileInput {
     cidade?: string;
     uf?: string;
     cep?: string;
+    cMun?: string;
   };
 }
 
@@ -81,6 +62,7 @@ export interface UpdateProfileInput {
     cidade?: string;
     uf?: string;
     cep?: string;
+    cMun?: string;
   };
 }
 
@@ -95,6 +77,7 @@ export interface ScenarioEmitenteDB {
   nro?: string | null;
   xCpl?: string | null;
   xBairro?: string | null;
+  cMun?: string | null;
   xMun?: string | null;
   UF?: string | null;
   fone?: string | null;
@@ -106,11 +89,13 @@ export interface ScenarioDestinatarioDB {
   scenarioId: string;
   cnpj?: string | null;
   cpf?: string | null;
+  centroDistribuicao?: string | null;
   xNome?: string | null;
   IE?: string | null;
   xLgr?: string | null;
   nro?: string | null;
   xBairro?: string | null;
+  cMun?: string | null;
   xMun?: string | null;
   UF?: string | null;
   CEP?: string | null;
@@ -124,46 +109,14 @@ export interface ScenarioProdutoDB {
   cEAN?: string | null;
   cProd?: string | null;
   NCM?: string | null;
+  regraTributariaNome?: string | null;
   origem?: string | null;
+  vUnComVenda?: string | null;
+  vUnComTransferencia?: string | null;
+  pesoBruto?: string | null;
+  pesoLiquido?: string | null;
   isPrincipal: boolean;
   ordem: number;
-}
-
-export interface ScenarioImpostoDB {
-  id: string;
-  scenarioId: string;
-  tipoTributacao?: string | null;
-  pFCP?: string | null;
-  pICMS?: string | null;
-  pICMSUFDest?: string | null;
-  pICMSInter?: string | null;
-  pPIS?: string | null;
-  pCOFINS?: string | null;
-  pIPI?: string | null;
-}
-
-export interface CstMappingDB {
-  id?: string;
-  scenarioId?: string;
-  tipoOperacao: string;
-  icms?: string | null;
-  ipi?: string | null;
-  pis?: string | null;
-  cofins?: string | null;
-}
-
-export interface TaxReformRuleDB {
-  id?: string;
-  scenarioId?: string;
-  pIBSUF?: string | null;
-  pIBSMun?: string | null;
-  pCBS?: string | null;
-  vDevTrib?: string | null;
-  cClassTrib?: string | null;
-  CST?: string | null;
-  gIBSUF_gRed?: Prisma.JsonValue | null;
-  gIBSMun_gRed?: Prisma.JsonValue | null;
-  gCBS_gRed?: Prisma.JsonValue | null;
 }
 
 /**
@@ -178,34 +131,24 @@ export interface ScenarioDB {
   editar_emitente: boolean;
   editar_destinatario_pj: boolean;
   editar_destinatario_pf: boolean;
+  editar_destinatario_remessa: boolean;
+  destinatarioRemessaMlCdId?: string | null;
   editar_produtos: boolean;
-  editar_impostos: boolean;
+  aplicar_regras_tributarias: boolean;
   editar_data: boolean;
   editar_refNFe: boolean;
-  editar_cst: boolean;
-  zerar_ipi_remessa_retorno: boolean;
-  zerar_ipi_venda: boolean;
-  reforma_tributaria: boolean;
   alterar_serie: boolean;
   alterar_cUF: boolean;
-  aplicar_reducao_aliq: boolean;
   nova_data?: string | null;
   nova_serie?: string | null;
   novo_cUF?: string | null;
   emitente?: Record<string, unknown> | null;
   destinatario?: Record<string, unknown> | null;
   produto_padrao?: Record<string, unknown> | null;
-  impostos_padrao?: Record<string, unknown> | null;
   emitenteData?: ScenarioEmitenteDB | null;
   destinatarioData?: ScenarioDestinatarioDB | null;
   produtoData?: ScenarioProdutoDB[] | null;
-  impostosData?: ScenarioImpostoDB | null;
-  cstMappings?: CstMappingDB[];
-  taxReformRules?: TaxReformRuleDB[];
   ScenarioEmitente?: ScenarioEmitenteDB | null;
   ScenarioDestinatario?: ScenarioDestinatarioDB | null;
   ScenarioProduto: ScenarioProdutoDB[];
-  ScenarioImposto?: ScenarioImpostoDB | null;
-  CstMapping?: CstMappingDB[];
-  TaxReformRule?: TaxReformRuleDB[];
 }

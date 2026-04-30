@@ -1,6 +1,6 @@
 /**
  * Módulo para manipulação de dados de produtos em XMLs de NF-e
- * Responsável por atualizar campos de produto e origem (ICMS) nos itens <det>
+ * Responsável por atualizar campos de produto e origem nos itens <det>
  */
 
 import {
@@ -23,7 +23,7 @@ export interface DadosProduto {
 
 /**
  * Atualiza os dados de produtos em um XML de NFe
- * Substitui valores de xProd, cEAN, cProd, NCM e origem (ICMS) em cada item <det>
+ * Substitui valores de xProd, cEAN, cProd, NCM e origem em cada item <det>
  *
  * @param xmlContent - Conteúdo do XML
  * @param produtos - Array de produtos com dados a serem aplicados
@@ -90,7 +90,7 @@ export function atualizarProdutosNoXml(
           alteracoes
         );
 
-        // Atualiza a origem do produto (tag <orig> dentro de <ICMS>)
+        // Atualiza a origem do produto (tag <orig>)
         detBlockEditado = atualizarOrigemProduto(
           detBlockEditado,
           produtoSelecionado,
@@ -156,7 +156,7 @@ function atualizarCamposProduto(
 }
 
 /**
- * Atualiza a origem do produto (tag <orig> dentro de <ICMS>)
+ * Atualiza a origem do produto (tag <orig>)
  */
 function atualizarOrigemProduto(
   detBlock: string,
@@ -168,7 +168,7 @@ function atualizarOrigemProduto(
   let detBlockEditado = detBlock;
 
   if (produto.origem) {
-    // Regex para encontrar a tag <orig> dentro do bloco <ICMS> ou <ICMSSN>
+    // Regex para encontrar a tag <orig> no bloco de imposto do item
     const regexOrig = /(<ICMS[^>]*>[\s\S]*?)(<orig>)[^<]+(<\/orig>)/i;
 
     if (regexOrig.test(detBlockEditado)) {
@@ -182,7 +182,7 @@ function atualizarOrigemProduto(
           ? "Remessa (rotação)"
           : "Venda/Retorno/Devolução/Remessa Simbólica (principal)";
         alteracoes.push(
-          `Produto ${tipoOp}: Origem (ICMS orig) alterada para ${produto.origem}`
+          `Produto ${tipoOp}: Origem (<orig>) alterada para ${produto.origem}`
         );
       }
     }

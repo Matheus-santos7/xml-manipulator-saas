@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { MaskedInput } from "@/components/ui/masked-input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,8 +15,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { saveProfile, deleteProfile } from "@/app/actions/company";
-import { Trash2, Loader2 } from "lucide-react";
+import { deleteProfile } from "@/app/actions/company";
+import { Trash2 } from "lucide-react";
 import { ProfileEditDialog } from "./ProfileEditDialog";
 
 interface Profile {
@@ -42,39 +40,6 @@ export function ProfileForm({
 }: ProfileFormProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [cnpj, setCnpj] = useState("");
-  const [name, setName] = useState("");
-  const [loadingCnpj, setLoadingCnpj] = useState(false);
-
-  // Buscar dados pelo CNPJ
-  async function handleCnpjBlur() {
-    const cleanCnpj = cnpj.replace(/\D/g, "");
-    if (cleanCnpj.length !== 14) return;
-
-    setLoadingCnpj(true);
-    try {
-      const response = await fetch(`/api/cnpj?cnpj=${cleanCnpj}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (!data.error) {
-          // Preenche o nome fantasia ou razão social
-          if (data.xFant) {
-            setName(data.xFant);
-          } else if (data.xNome) {
-            setName(data.xNome);
-          }
-          toast.success("Dados do CNPJ carregados!");
-        }
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || "CNPJ não encontrado");
-      }
-    } catch (error) {
-      console.error("Erro ao buscar CNPJ:", error);
-    } finally {
-      setLoadingCnpj(false);
-    }
-  }
 
   async function handleDelete(profileId: string) {
     setIsDeleting(profileId);
@@ -96,21 +61,6 @@ export function ProfileForm({
     } finally {
       setIsDeleting(null);
     }
-  }
-
-  async function handleSubmit(formData: FormData) {
-    // Adiciona CNPJ e nome também no FormData (caso útil no futuro),
-    // mas chama a action tipada com o objeto esperado.
-    formData.set("cnpj", cnpj);
-    formData.set("name", name);
-
-    await saveProfile({
-      name,
-      cnpj,
-    });
-    setCnpj("");
-    setName("");
-    router.refresh();
   }
 
   return (
@@ -145,6 +95,7 @@ export function ProfileForm({
                     cidade?: string;
                     uf?: string;
                     cep?: string;
+                    cMun?: string;
                   } | null,
                 }}
               />
@@ -189,43 +140,6 @@ export function ProfileForm({
         </div>
       ))}
 
-      {/* Formulário para adicionar empresa - apenas para admins */}
-      {canManage && (
-        <form
-          action={handleSubmit}
-          className="mt-4 pt-4 border-t border-border space-y-2"
-        >
-          <p className="text-xs font-semibold text-muted-foreground uppercase">
-            Adicionar Nova Empresa
-          </p>
-          <div className="space-y-2">
-            <div className="relative">
-              <MaskedInput
-                mask="cnpj"
-                value={cnpj}
-                onChange={setCnpj}
-                onBlur={handleCnpjBlur}
-                placeholder="00.000.000/0000-00"
-                className="h-8 text-sm"
-              />
-              {loadingCnpj && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-              )}
-            </div>
-            <Input
-              name="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nome da Empresa"
-              required
-              className="h-8 text-sm"
-            />
-          </div>
-          <Button size="sm" type="submit" className="w-full">
-            Salvar
-          </Button>
-        </form>
-      )}
     </div>
   );
 }

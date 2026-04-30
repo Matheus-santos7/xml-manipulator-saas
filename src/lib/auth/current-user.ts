@@ -28,12 +28,47 @@ async function getCurrentUserImpl(): Promise<CurrentUser | null> {
       return null;
     }
 
-    const user = await db.user.findUnique({
-      where: {
-        email: userEmail,
-        deletedAt: null, // Filtrar usuários não deletados
-      },
-    });
+    let user: {
+      id: string;
+      name: string | null;
+      email: string | null;
+      role: string;
+    } | null = null;
+    try {
+      user = await db.user.findFirst({
+        where: {
+          email: userEmail,
+          deletedAt: null, // Filtrar usuários não deletados
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      });
+    } catch (error) {
+      const missingColumn =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: string }).code === "P2022";
+      if (missingColumn) {
+        user = await db.user.findFirst({
+          where: {
+            email: userEmail,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
 
     console.debug("User record retrieved", {
       userId: user?.id,
@@ -45,16 +80,47 @@ async function getCurrentUserImpl(): Promise<CurrentUser | null> {
       return null;
     }
 
-    const workspaceMember = await db.workspaceMember.findFirst({
-      include: {
-        User: true,
-        Workspace: true,
-      },
-      where: {
-        userId: user.id,
-        deletedAt: null, // Filtrar membros não deletados
-      },
-    });
+    let workspaceMember: {
+      id: string;
+      workspaceId: string;
+      role: string;
+      profileId?: string | null;
+    } | null = null;
+    try {
+      workspaceMember = await db.workspaceMember.findFirst({
+        where: {
+          userId: user.id,
+          deletedAt: null, // Filtrar membros não deletados
+        },
+        select: {
+          id: true,
+          workspaceId: true,
+          role: true,
+          profileId: true,
+        },
+      });
+    } catch (error) {
+      const missingColumn =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: string }).code === "P2022";
+      if (missingColumn) {
+        workspaceMember = await db.workspaceMember.findFirst({
+          where: {
+            userId: user.id,
+          },
+          select: {
+            id: true,
+            workspaceId: true,
+            role: true,
+            profileId: true,
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
 
     console.debug("Workspace member retrieved", {
       workspaceMemberId: workspaceMember?.id,
@@ -87,18 +153,15 @@ async function getCurrentUserImpl(): Promise<CurrentUser | null> {
 
     // Para membros, busca o profileId diretamente do registro
     // Nota: Usado any temporariamente até Prisma Client ser totalmente regenerado
-    const memberWithProfile = workspaceMember as typeof workspaceMember & {
-      profileId?: string;
-    };
     let profileId: string | undefined;
-    if (role === ROLES.MEMBER && memberWithProfile.profileId) {
-      profileId = memberWithProfile.profileId;
+    if (role === ROLES.MEMBER && workspaceMember.profileId) {
+      profileId = workspaceMember.profileId;
     }
 
     return {
-      id: workspaceMember.User.id,
-      name: workspaceMember.User.name,
-      email: workspaceMember.User.email,
+      id: user.id,
+      name: user.name,
+      email: user.email,
       workspaceId: workspaceMember.workspaceId,
       role,
       profileId,

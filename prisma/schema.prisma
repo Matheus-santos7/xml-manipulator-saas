@@ -25,19 +25,6 @@ model Account {
   @@unique([provider, providerAccountId])
 }
 
-model CstMapping {
-  id           String   @id @default(cuid())
-  scenarioId   String
-  tipoOperacao String   // VENDA, DEVOLUCAO, RETORNO, REMESSA
-  icms         String?
-  ipi          String?
-  pis          String?
-  cofins       String?
-  Scenario     Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
-
-  @@unique([scenarioId, tipoOperacao])
-}
-
 model Profile {
   id                  String            @id @default(cuid())
   workspaceId         String
@@ -48,6 +35,7 @@ model Profile {
   deletedAt           DateTime?         // Soft delete - data de exclusão
   Workspace           Workspace         @relation(fields: [workspaceId], references: [id])
   Scenario            Scenario[]
+  ProfileTaxRules     ProfileTaxRules?
   WorkspaceMember     WorkspaceMember[]
 }
 
@@ -59,28 +47,22 @@ model Scenario {
   deletedAt                 DateTime?             // Soft delete - data de exclusão
   editar_emitente           Boolean               @default(false)
   editar_produtos           Boolean               @default(false)
-  editar_impostos           Boolean               @default(false)
+  aplicar_regras_tributarias Boolean              @default(false)
   editar_data               Boolean               @default(false)
   editar_refNFe             Boolean               @default(false)
-  editar_cst                Boolean               @default(false)
   editar_destinatario_pj    Boolean               @default(false)
   editar_destinatario_pf    Boolean               @default(false)
-  zerar_ipi_remessa_retorno Boolean               @default(false)
-  zerar_ipi_venda           Boolean               @default(false)
-  reforma_tributaria        Boolean               @default(false)
+  editar_destinatario_remessa Boolean             @default(false)
+  destinatarioRemessaMlCdId String?
   alterar_serie             Boolean               @default(false)
   alterar_cUF               Boolean               @default(false)
-  aplicar_reducao_aliq      Boolean               @default(false)
   nova_data                 String?
   nova_serie                String?
   novo_cUF                  String?
-  CstMapping                CstMapping[]
   Profile                   Profile               @relation(fields: [profileId], references: [id])
   ScenarioDestinatario      ScenarioDestinatario?
   ScenarioEmitente          ScenarioEmitente?
-  ScenarioImposto           ScenarioImposto?
   ScenarioProduto           ScenarioProduto[]
-  TaxReformRule             TaxReformRule[]
 
   @@unique([profileId, name])
 }
@@ -90,11 +72,13 @@ model ScenarioDestinatario {
   scenarioId String   @unique
   cnpj       String?
   cpf        String?
+  centroDistribuicao String?
   xNome      String?
   IE         String?
   xLgr       String?
   nro        String?
   xBairro    String?
+  cMun       String?
   xMun       String?
   UF         String?
   CEP        String?
@@ -111,26 +95,13 @@ model ScenarioEmitente {
   nro        String?
   xCpl       String?
   xBairro    String?
+  cMun       String?
   xMun       String?
   UF         String?
   fone       String?
   IE         String?
   CEP        String?
   Scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
-}
-
-model ScenarioImposto {
-  id               String   @id @default(cuid())
-  scenarioId       String   @unique
-  tipoTributacao   String?  // TRIBUTADO, NAO_TRIBUTADO
-  pFCP             String?
-  pICMS            String?
-  pICMSUFDest      String?
-  pICMSInter       String?
-  pPIS             String?
-  pCOFINS          String?
-  pIPI             String?
-  Scenario         Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 }
 
 model ScenarioProduto {
@@ -140,7 +111,12 @@ model ScenarioProduto {
   cEAN         String?
   cProd        String?
   NCM          String?
+  regraTributariaNome String?
   origem       String?  // Origem do produto: "0" (Nacional Puro), "1" (Importei), "2" (Comprei Importado), "3" (Nacional Misto), "4" (Nacional PPB), "6", "7", "8"
+  vUnComVenda           String? // Valor unitário aplicado em CFOPs de venda/devolução
+  vUnComTransferencia   String? // Valor unitário aplicado em CFOPs de remessa/retorno/transferência
+  pesoBruto             String? // Peso bruto (kg) por unidade do produto
+  pesoLiquido           String? // Peso líquido (kg) por unidade do produto
   isPrincipal  Boolean  @default(false) // Produto usado em Venda/Retorno/Devolução
   ordem        Int      @default(0) // Ordem de rotação para Remessa
   Scenario     Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
@@ -149,27 +125,23 @@ model ScenarioProduto {
   @@index([scenarioId])
 }
 
+model ProfileTaxRules {
+  id          String   @id @default(cuid())
+  profileId   String   @unique
+  fileName    String
+  totalRules  Int      @default(0)
+  rules       Json
+  uploadedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  Profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
   User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model TaxReformRule {
-  id           String   @id @default(cuid())
-  scenarioId   String
-  pIBSUF       String?
-  pIBSMun      String?
-  pCBS         String?
-  vDevTrib     String?
-  cClassTrib   String?
-  CST          String?
-  gIBSUF_gRed  Json?
-  gIBSMun_gRed Json?
-  gCBS_gRed    Json?
-  Scenario     Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
 }
 
 model User {

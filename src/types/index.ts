@@ -9,9 +9,6 @@ export type {
   ScenarioEmitenteDB,
   ScenarioDestinatarioDB,
   ScenarioProdutoDB,
-  ScenarioImpostoDB,
-  CstMappingDB,
-  TaxReformRuleDB,
 } from "@/lib/scenarios";
 
 export interface ProcessingReport {

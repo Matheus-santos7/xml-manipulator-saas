@@ -18,6 +18,8 @@ interface BrasilApiResponse {
   data_situacao_cadastral: string;
   codigo_municipio: string;
   codigo_municipio_ibge: string;
+  inscricao_estadual?: string | null;
+  ie?: string | null;
   message?: string;
   type?: string;
 }
@@ -30,6 +32,7 @@ export interface CnpjData {
   nro: string;
   xCpl: string;
   xBairro: string;
+  IE: string;
   xMun: string;
   UF: string;
   CEP: string;
@@ -37,6 +40,42 @@ export interface CnpjData {
   email: string;
   cMun: string;
   situacao: string;
+}
+
+function resolveInscricaoEstadual(data: BrasilApiResponse): string {
+  const ieRaw = String(data.ie || data.inscricao_estadual || "").trim();
+  if (!ieRaw) return "";
+  // Mantém "ISENTO" ou códigos numéricos/alfanuméricos sem pontuação.
+  if (ieRaw.toUpperCase() === "ISENTO") return "ISENTO";
+  return ieRaw.replace(/[^\dA-Za-z]/g, "");
+}
+
+async function resolveMunicipioIbgeCode(
+  primaryCode: string | undefined,
+  fallbackCode: string | undefined,
+  cep: string | undefined
+): Promise<string> {
+  const primary = (primaryCode || "").replace(/\D/g, "");
+  if (primary.length === 7) return primary;
+
+  const fallback = (fallbackCode || "").replace(/\D/g, "");
+  if (fallback.length === 7) return fallback;
+
+  const cepLimpo = (cep || "").replace(/\D/g, "");
+  if (cepLimpo.length !== 8) return "";
+
+  try {
+    const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return "";
+    const data = (await response.json()) as { ibge?: string; erro?: boolean };
+    if (data.erro) return "";
+    const ibge = (data.ibge || "").replace(/\D/g, "");
+    return ibge.length === 7 ? ibge : "";
+  } catch {
+    return "";
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -89,16 +128,8 @@ export async function GET(request: NextRequest) {
           );
         }
 
-        // CNPJ não encontrado
-        if (
-          response.status === 404 ||
-          errorData?.message?.includes("não encontrado")
-        ) {
-          return NextResponse.json(
-            { error: "CNPJ não encontrado na base da Receita Federal" },
-            { status: 404 }
-          );
-        }
+        // Em 404 também tentamos fallback (ReceitaWS), pois o provedor
+        // primário pode estar com base desatualizada/instável.
       }
     } catch (brasilApiError) {
       console.error("BrasilAPI falhou:", brasilApiError);
@@ -145,6 +176,7 @@ export async function GET(request: NextRequest) {
             data_situacao_cadastral: receitaData.data_situacao,
             codigo_municipio: "",
             codigo_municipio_ibge: "",
+            ie: receitaData.ie || "",
           };
         }
       } catch (receitaError) {
@@ -168,6 +200,12 @@ export async function GET(request: NextRequest) {
       telefone = data.ddd_telefone_1.replace(/\D/g, "");
     }
 
+    const cMunResolved = await resolveMunicipioIbgeCode(
+      data.codigo_municipio_ibge,
+      data.codigo_municipio,
+      data.cep
+    );
+
     // Transforma para o formato usado no sistema
     const result: CnpjData = {
       cnpj: cnpjLimpo,
@@ -177,12 +215,13 @@ export async function GET(request: NextRequest) {
       nro: data.numero || "",
       xCpl: data.complemento || "",
       xBairro: data.bairro || "",
+      IE: resolveInscricaoEstadual(data),
       xMun: data.municipio || "",
       UF: data.uf || "",
       CEP: (data.cep || "").replace(/\D/g, ""),
       fone: telefone,
       email: data.email || "",
-      cMun: data.codigo_municipio_ibge || data.codigo_municipio || "",
+      cMun: cMunResolved,
       situacao: data.situacao_cadastral || "",
     };
 

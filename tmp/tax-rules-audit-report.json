@@ -1,0 +1,1020 @@
+{
+  "summary": {
+    "profileId": "cmok4nfhk00011k4y8vrfqgno",
+    "workbookPath": "/Volumes/HD externo/Pessoal/xml-manipulator-saas/Regras_Tributarias-2026_4_9-1775747309630 vanessa.xlsx",
+    "dbFileName": "Regras_Tributarias-2026_4_9-1775747309630 vanessa.xlsx",
+    "dbUploadedAt": "2026-04-29T14:06:44.360Z",
+    "dbUpdatedAt": "2026-04-29T14:06:44.360Z",
+    "expectedHeadersCount": 473,
+    "actualHeadersCount": 473,
+    "expectedRulesCount": 6,
+    "actualRulesCount": 6,
+    "isExactMatch": false,
+    "diffsFound": 168,
+    "maxDiffsReported": 300
+  },
+  "sampleDiffs": [
+    {
+      "path": "rules[0].ruleId",
+      "expected": null,
+      "kind": "missing_in_db"
+    },
+    {
+      "path": "rules[0].icmsByUf.AC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.AL.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.AM.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.AP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.BA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.CE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.DF.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.ES.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.GO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.MA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.MT.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.MS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.MG.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.PA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.PB.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.PR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.PE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.PI.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.RJ.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.RN.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.RS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.RO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.RR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.SC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.SP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.SE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[0].icmsByUf.TO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].ruleId",
+      "expected": null,
+      "kind": "missing_in_db"
+    },
+    {
+      "path": "rules[1].icmsByUf.AC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.AL.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.AM.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.AP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.BA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.CE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.DF.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.ES.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.GO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.MA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.MT.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.MS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.MG.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.PA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.PB.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.PR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.PE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.PI.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.RJ.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.RN.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.RS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.RO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.RR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.SC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.SP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.SE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[1].icmsByUf.TO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].ruleId",
+      "expected": null,
+      "kind": "missing_in_db"
+    },
+    {
+      "path": "rules[2].icmsByUf.AC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.AL.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.AM.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.AP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.BA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.CE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.DF.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.ES.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.GO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.MA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.MT.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.MS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.MG.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.PA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.PB.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.PR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.PE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.PI.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.RJ.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.RN.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.RS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.RO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.RR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.SC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.SP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.SE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[2].icmsByUf.TO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].ruleId",
+      "expected": null,
+      "kind": "missing_in_db"
+    },
+    {
+      "path": "rules[3].icmsByUf.AC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.AL.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.AM.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.AP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.BA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.CE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.DF.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.ES.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.GO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.MA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.MT.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.MS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.MG.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.PA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.PB.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.PR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.PE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.PI.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.RJ.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.RN.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.RS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.RO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.RR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.SC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.SP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.SE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[3].icmsByUf.TO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].ruleId",
+      "expected": null,
+      "kind": "missing_in_db"
+    },
+    {
+      "path": "rules[4].icmsByUf.AC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.AL.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.AM.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.AP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.BA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.CE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.DF.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.ES.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.GO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.MA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.MT.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.MS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.MG.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.PA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.PB.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.PR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.PE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.PI.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.RJ.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.RN.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.RS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.RO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.RR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.SC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.SP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.SE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[4].icmsByUf.TO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].ruleId",
+      "expected": null,
+      "kind": "missing_in_db"
+    },
+    {
+      "path": "rules[5].icmsByUf.AC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.AL.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.AM.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.AP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.BA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.CE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.DF.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.ES.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.GO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.MA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.MT.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.MS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.MG.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.PA.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.PB.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.PR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.PE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.PI.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.RJ.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.RN.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.RS.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.RO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.RR.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.SC.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.SP.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.SE.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    },
+    {
+      "path": "rules[5].icmsByUf.TO.CST",
+      "expected": "00",
+      "actual": "00 - Tributada integralmente",
+      "kind": "value_mismatch"
+    }
+  ]
+}

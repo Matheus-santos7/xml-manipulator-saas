@@ -1,11 +1,14 @@
+import type { NormalizedTaxRule } from "@/lib/tax-rules/types";
+import { getMeliCdById } from "@/lib/constants/meli-cds";
+
 export type ScenarioForEditor = {
   editar_emitente: boolean;
   editar_destinatario_pj: boolean;
   editar_destinatario_pf: boolean;
+  editar_destinatario_remessa: boolean;
+  destinatarioRemessaMlCdId?: string | null;
   editar_produtos: boolean;
-  editar_impostos: boolean;
-  editar_cst: boolean;
-  reforma_tributaria: boolean;
+  aplicar_regras_tributarias: boolean;
   editar_data: boolean;
   alterar_cUF: boolean;
   alterar_serie: boolean;
@@ -20,6 +23,7 @@ export type ScenarioForEditor = {
     nro?: string | null;
     xCpl?: string | null;
     xBairro?: string | null;
+    cMun?: string | null;
     xMun?: string | null;
     UF?: string | null;
     CEP?: string | null;
@@ -28,11 +32,13 @@ export type ScenarioForEditor = {
   ScenarioDestinatario?: {
     cnpj?: string | null;
     cpf?: string | null;
+    centroDistribuicao?: string | null;
     xNome?: string | null;
     IE?: string | null;
     xLgr?: string | null;
     nro?: string | null;
     xBairro?: string | null;
+    cMun?: string | null;
     xMun?: string | null;
     UF?: string | null;
     CEP?: string | null;
@@ -43,35 +49,20 @@ export type ScenarioForEditor = {
     cEAN?: string | null;
     cProd?: string | null;
     NCM?: string | null;
+    regraTributariaNome?: string | null;
     origem?: string | null;
+    vUnComVenda?: string | null;
+    vUnComTransferencia?: string | null;
+    pesoBruto?: string | null;
+    pesoLiquido?: string | null;
     isPrincipal: boolean;
     ordem: number;
   }> | null;
-  ScenarioImposto?: {
-    tipoTributacao?: string | null;
-    pFCP?: string | null;
-    pICMS?: string | null;
-    pICMSUFDest?: string | null;
-    pICMSInter?: string | null;
-    pPIS?: string | null;
-    pCOFINS?: string | null;
-    pIPI?: string | null;
+  Profile?: {
+    ProfileTaxRules?: {
+      rules: unknown;
+    } | null;
   } | null;
-  CstMapping?: Array<{
-    tipoOperacao: string;
-    icms: string | null;
-    ipi: string | null;
-    pis: string | null;
-    cofins: string | null;
-  }> | null;
-  TaxReformRule?: Array<{
-    pIBSUF?: string | null;
-    pIBSMun?: string | null;
-    pCBS?: string | null;
-    vDevTrib?: string | null;
-    cClassTrib?: string | null;
-    CST?: string | null;
-  }> | null;
 };
 
 export type EditorParams = {
@@ -88,7 +79,7 @@ export type EditorParams = {
     nro: string;
     xCpl: string;
     xBairro: string;
-    cMun?: undefined;
+    cMun?: string;
     xMun: string;
     UF: string;
     CEP: string;
@@ -104,7 +95,7 @@ export type EditorParams = {
     xLgr: string;
     nro: string;
     xBairro: string;
-    cMun?: undefined;
+    cMun?: string;
     xMun: string;
     UF: string;
     CEP: string;
@@ -112,40 +103,38 @@ export type EditorParams = {
     xPais?: undefined;
     fone: string;
   } | null;
+  /**
+   * Destinatário específico para CFOPs de remessa/retorno (Centro de
+   * Distribuição do Mercado Livre). Quando preenchido, sobrescreve `<dest>`
+   * apenas para NFes cujo primeiro item seja remessa/retorno.
+   */
+  novoDestinatarioRemessa: {
+    CNPJ: string;
+    xNome: string;
+    IE: string;
+    xLgr: string;
+    nro: string;
+    xBairro: string;
+    cMun?: string;
+    xMun: string;
+    UF: string;
+    CEP: string;
+  } | null;
   produtos: Array<{
     xProd?: string;
     cEAN?: string;
     cProd?: string;
     NCM?: string;
+    regraTributariaNome?: string;
     origem?: string;
+    vUnComVenda?: string;
+    vUnComTransferencia?: string;
+    pesoBruto?: string;
+    pesoLiquido?: string;
     isPrincipal: boolean;
     ordem: number;
   }> | null;
-  cstMappings: Array<{
-    tipoOperacao: "VENDA" | "DEVOLUCAO" | "RETORNO" | "REMESSA";
-    icms: string | null;
-    ipi: string | null;
-    pis: string | null;
-    cofins: string | null;
-  }> | null;
-  taxReformRule: {
-    pIBSUF?: string;
-    pIBSMun?: string;
-    pCBS?: string;
-    vDevTrib: string;
-    cClassTrib: string;
-    CST: string;
-  } | null;
-  impostosData: {
-    tipoTributacao?: string;
-    pFCP?: string;
-    pICMS?: string;
-    pICMSUFDest?: string;
-    pICMSInter?: string;
-    pPIS?: string;
-    pCOFINS?: string;
-    pIPI?: string;
-  } | null;
+  taxRules: NormalizedTaxRule[] | null;
 };
 
 export function buildEditorParams(scenario: ScenarioForEditor): EditorParams {
@@ -164,7 +153,7 @@ export function buildEditorParams(scenario: ScenarioForEditor): EditorParams {
           nro: scenario.ScenarioEmitente.nro || "",
           xCpl: scenario.ScenarioEmitente.xCpl || "",
           xBairro: scenario.ScenarioEmitente.xBairro || "",
-          cMun: undefined,
+          cMun: scenario.ScenarioEmitente.cMun || "",
           xMun: scenario.ScenarioEmitente.xMun || "",
           UF: scenario.ScenarioEmitente.UF || "",
           CEP: (scenario.ScenarioEmitente.CEP || "").replace(/\D/g, ""),
@@ -192,7 +181,7 @@ export function buildEditorParams(scenario: ScenarioForEditor): EditorParams {
           xLgr: scenario.ScenarioDestinatario.xLgr || "",
           nro: scenario.ScenarioDestinatario.nro || "",
           xBairro: scenario.ScenarioDestinatario.xBairro || "",
-          cMun: undefined,
+          cMun: scenario.ScenarioDestinatario.cMun || "",
           xMun: scenario.ScenarioDestinatario.xMun || "",
           UF: scenario.ScenarioDestinatario.UF || "",
           CEP: scenario.ScenarioDestinatario.CEP
@@ -206,6 +195,26 @@ export function buildEditorParams(scenario: ScenarioForEditor): EditorParams {
         }
       : null;
 
+  const cdEscolhido =
+    scenario.editar_destinatario_remessa && scenario.destinatarioRemessaMlCdId
+      ? getMeliCdById(scenario.destinatarioRemessaMlCdId)
+      : null;
+
+  const novoDestinatarioRemessa = cdEscolhido
+    ? {
+        CNPJ: cdEscolhido.cnpj,
+        xNome: "EBAZAR.COM.BR LTDA",
+        IE: cdEscolhido.ie || "",
+        xLgr: cdEscolhido.xLgr,
+        nro: cdEscolhido.nro,
+        xBairro: cdEscolhido.cidade,
+        cMun: cdEscolhido.cMun || "",
+        xMun: cdEscolhido.cidade,
+        UF: cdEscolhido.uf,
+        CEP: cdEscolhido.cep,
+      }
+    : null;
+
   const produtos =
     scenario.editar_produtos &&
     scenario.ScenarioProduto &&
@@ -215,62 +224,30 @@ export function buildEditorParams(scenario: ScenarioForEditor): EditorParams {
           cEAN: p.cEAN || undefined,
           cProd: p.cProd || undefined,
           NCM: p.NCM || undefined,
+          regraTributariaNome: p.regraTributariaNome || undefined,
           origem: p.origem || undefined,
+          vUnComVenda: p.vUnComVenda || undefined,
+          vUnComTransferencia: p.vUnComTransferencia || undefined,
+          pesoBruto: p.pesoBruto || undefined,
+          pesoLiquido: p.pesoLiquido || undefined,
           isPrincipal: p.isPrincipal,
           ordem: p.ordem,
         })).sort((a, b) => a.ordem - b.ordem)
       : null;
 
-  const cstMappings =
-    scenario.editar_cst && scenario.CstMapping && scenario.CstMapping.length > 0
-      ? scenario.CstMapping.map((m) => ({
-          tipoOperacao: m.tipoOperacao as
-            | "VENDA"
-            | "DEVOLUCAO"
-            | "RETORNO"
-            | "REMESSA",
-          icms: m.icms,
-          ipi: m.ipi,
-          pis: m.pis,
-          cofins: m.cofins,
-        }))
-      : null;
-
-  const taxReformRule =
-    scenario.reforma_tributaria &&
-    scenario.TaxReformRule &&
-    scenario.TaxReformRule.length > 0
-      ? {
-          pIBSUF: scenario.TaxReformRule[0].pIBSUF || undefined,
-          pIBSMun: scenario.TaxReformRule[0].pIBSMun || undefined,
-          pCBS: scenario.TaxReformRule[0].pCBS || undefined,
-          vDevTrib: scenario.TaxReformRule[0].vDevTrib || "0.00",
-          cClassTrib: scenario.TaxReformRule[0].cClassTrib || "000001",
-          CST: scenario.TaxReformRule[0].CST || "000",
-        }
-      : null;
-
-  const impostosData =
-    scenario.editar_impostos && scenario.ScenarioImposto
-      ? {
-          tipoTributacao: scenario.ScenarioImposto.tipoTributacao || undefined,
-          pFCP: scenario.ScenarioImposto.pFCP || undefined,
-          pICMS: scenario.ScenarioImposto.pICMS || undefined,
-          pICMSUFDest: scenario.ScenarioImposto.pICMSUFDest || undefined,
-          pICMSInter: scenario.ScenarioImposto.pICMSInter || undefined,
-          pPIS: scenario.ScenarioImposto.pPIS || undefined,
-          pCOFINS: scenario.ScenarioImposto.pCOFINS || undefined,
-          pIPI: scenario.ScenarioImposto.pIPI || undefined,
-        }
+  const taxRules =
+    scenario.aplicar_regras_tributarias &&
+    scenario.Profile?.ProfileTaxRules?.rules &&
+    Array.isArray(scenario.Profile.ProfileTaxRules.rules)
+      ? (scenario.Profile.ProfileTaxRules.rules as NormalizedTaxRule[])
       : null;
 
   return {
     novoEmitente,
     novoDestinatario,
+    novoDestinatarioRemessa,
     produtos,
-    cstMappings,
-    taxReformRule,
-    impostosData,
+    taxRules,
   };
 }
 

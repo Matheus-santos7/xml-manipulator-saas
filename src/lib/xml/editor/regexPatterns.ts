@@ -1,5 +1,5 @@
 /**
- * Padrões Regex para Manipulação de XMLs Fiscais Brasileiros
+ * Padrões Regex para manipulação de XMLs brasileiros
  *
  * Este módulo centraliza todos os padrões regex utilizados na manipulação
  * de XMLs de NFe, CT-e, Cancelamento e Inutilização.
@@ -23,7 +23,7 @@ export const XML_STRUCTURE = {
   /** Bloco de item/produto <det>...</det> */
   DET_BLOCK: /<det[^>]*>[\s\S]*?<\/det>/gi,
 
-  /** Bloco de impostos <imposto>...</imposto> */
+  /** Bloco <imposto>...</imposto> */
   IMPOSTO_BLOCK: /<imposto[^>]*>[\s\S]*?<\/imposto>/gi,
 
   /** Bloco de emitente <emit>...</emit> */
@@ -90,6 +90,10 @@ export const IDENTIFICACAO_PATTERNS = {
   /** Tag cUF (código UF) */
   CUF: /<cUF>([^<]+)<\/cUF>/g,
   CUF_REPLACE: /(<cUF>)[^<]+(<\/cUF>)/g,
+
+  /** idDest dentro do grupo ide (NFe) */
+  IDDEST_IN_IDE_REPLACE:
+    /(<ide[^>]*>[\s\S]*?<idDest>)[^<]+(<\/idDest>)/i,
 
   /** Tag série */
   SERIE: /<serie>([^<]+)<\/serie>/g,
@@ -172,7 +176,7 @@ export const PRODUTO_PATTERNS = {
   /** Tag NCM */
   NCM: /<NCM>([^<]+)<\/NCM>/i,
 
-  /** Tag origem (origem do produto para ICMS) */
+  /** Tag origem do produto */
   ORIGEM: /<orig>([^<]+)<\/orig>/i,
 } as const;
 
@@ -187,119 +191,11 @@ export function createProdutoFieldRegex(campo: string): RegExp {
 }
 
 /**
- * Cria regex para origem dentro do bloco ICMS
+ * Cria regex para origem dentro do bloco de origem do item
  */
 export function createOrigemIcmsRegex(): RegExp {
   return new RegExp(`(<ICMS[^>]*>[\\s\\S]*?)(<orig>)[^<]+(<\\/orig>)`, "i");
 }
-
-// ============================================================================
-// IMPOSTOS - CST
-// ============================================================================
-
-/**
- * Padrões para manipulação de CST (Código de Situação Tributária)
- */
-export const CST_PATTERNS = {
-  /** CST do ICMS (dentro de <ICMS><ICMSxx><CST>) */
-  ICMS: /(<ICMS[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i,
-
-  /** CST do IPI (dentro de <IPI><IPITrib> ou <IPI><IPINT>) */
-  IPI: /(<IPI[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i,
-
-  /** CST do PIS */
-  PIS: /(<PIS[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i,
-
-  /** CST do COFINS */
-  COFINS: /(<COFINS[^>]*>[\s\S]*?)(<CST>)[^<]+(<\/CST>)/i,
-} as const;
-
-// ============================================================================
-// IMPOSTOS - IPI
-// ============================================================================
-
-/**
- * Padrões para manipulação de IPI
- */
-export const IPI_PATTERNS = {
-  /** Valor do IPI */
-  V_IPI: /(<vIPI>)[^<]+(<\/vIPI>)/gi,
-
-  /** Base de cálculo do IPI (dentro do bloco IPI) */
-  V_BC_IPI: /(<IPI[^>]*>[\s\S]*?)(<vBC>)[^<]+(<\/vBC>)/i,
-
-  /** Alíquota do IPI */
-  P_IPI: /(<pIPI>)[^<]+(<\/pIPI>)/gi,
-
-  /** Valor total de IPI no totalizador */
-  V_IPI_TOTAL: /(<ICMSTot[^>]*>[\s\S]*?<vIPI>)[^<]+(<\/vIPI>)/i,
-
-  /** Valor total da nota */
-  V_NF_TOTAL: /(<ICMSTot[^>]*>[\s\S]*?<vNF>)[^<]+(<\/vNF>)/i,
-} as const;
-
-/**
- * Padrões para captura de valores dos produtos (para recálculo)
- */
-export const VALORES_PRODUTO_PATTERNS = {
-  V_PROD: /<vProd>([^<]+)<\/vProd>/i,
-  V_IPI: /<vIPI>([^<]+)<\/vIPI>/i,
-  V_DESC: /<vDesc>([^<]+)<\/vDesc>/i,
-  V_FRETE: /<vFrete>([^<]+)<\/vFrete>/i,
-  V_SEG: /<vSeg>([^<]+)<\/vSeg>/i,
-  V_OUTRO: /<vOutro>([^<]+)<\/vOutro>/i,
-} as const;
-
-// ============================================================================
-// REFORMA TRIBUTÁRIA - IBS/CBS
-// ============================================================================
-
-/**
- * Padrões para manipulação de impostos gerais
- */
-export const IMPOSTO_PATTERNS = {
-  /** Padrão genérico para tags de imposto (pFCP, pICMS, pPIS, pCOFINS, pIPI, etc) */
-  createImpostoFieldRegex: (fieldName: string) =>
-    new RegExp(`(<${fieldName}>)[^<]+(<\\/${fieldName}>)`, "gi"),
-
-  /** Captura valor de tag de imposto */
-  getImpostoFieldValue: (fieldName: string) =>
-    new RegExp(`<${fieldName}>([^<]+)<\\/${fieldName}>`, "i"),
-
-  // Bases de cálculo
-  V_BC_ICMS: /<vBC>([^<]+)<\/vBC>/i,
-  V_BC_PIS: /<vBC>([^<]+)<\/vBC>/i,
-  V_BC_COFINS: /<vBC>([^<]+)<\/vBC>/i,
-
-  // Valores de impostos (dentro dos blocos específicos)
-  V_ICMS: /(<ICMS[^>]*>[\s\S]*?<vICMS>)[^<]+(<\/vICMS>)/i,
-  V_FCP: /(<vFCP>)[^<]+(<\/vFCP>)/gi,
-  V_PIS: /(<PIS[^>]*>[\s\S]*?<vPIS>)[^<]+(<\/vPIS>)/i,
-  V_COFINS: /(<COFINS[^>]*>[\s\S]*?<vCOFINS>)[^<]+(<\/vCOFINS>)/i,
-
-  // Totalizadores
-  V_ICMS_TOTAL: /(<ICMSTot[^>]*>[\s\S]*?<vICMS>)[^<]+(<\/vICMS>)/i,
-  V_FCP_TOTAL: /(<ICMSTot[^>]*>[\s\S]*?<vFCP>)[^<]+(<\/vFCP>)/i,
-  V_PIS_TOTAL: /(<ICMSTot[^>]*>[\s\S]*?<vPIS>)[^<]+(<\/vPIS>)/i,
-  V_COFINS_TOTAL: /(<ICMSTot[^>]*>[\s\S]*?<vCOFINS>)[^<]+(<\/vCOFINS>)/i,
-} as const;
-
-/**
- * Padrões para manipulação de IBS/CBS
- */
-export const REFORMA_TRIBUTARIA_PATTERNS = {
-  /** Remove bloco IBSCBS existente */
-  REMOVE_IBSCBS: /<IBSCBS>[\s\S]*?<\/IBSCBS>/gi,
-
-  /** Remove bloco IBSCBSTot existente */
-  REMOVE_IBSCBS_TOT: /<IBSCBSTot>[\s\S]*?<\/IBSCBSTot>/gi,
-
-  /** Identifica fechamento de </imposto> para inserção */
-  IMPOSTO_CLOSE: /(<\/imposto>)/i,
-
-  /** Identifica fechamento de </total> para inserção */
-  TOTAL_CLOSE: /(<\/total>)/i,
-} as const;
 
 // ============================================================================
 // INUTILIZAÇÃO

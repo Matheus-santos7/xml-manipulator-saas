@@ -10,12 +10,14 @@ import { FileCog, Building2 } from "lucide-react";
 import type { UserPermissions } from "@/lib/auth/rbac";
 import type { ScenarioWithRelations } from "@/lib/scenarios/types";
 import { ScenarioEditor } from "./ScenarioEditor";
+import { ScenarioBatchImport } from "./ScenarioBatchImport";
 
 interface ScenariosCardProps {
   scenarios: ScenarioWithRelations[];
   selectedProfileId?: string;
   selectedProfileName?: string | null;
   permissions: UserPermissions;
+  taxRuleNames?: string[];
 }
 
 export function ScenariosCard({
@@ -23,6 +25,7 @@ export function ScenariosCard({
   selectedProfileId,
   selectedProfileName,
   permissions,
+  taxRuleNames = [],
 }: ScenariosCardProps) {
   const { canViewProfiles, canManageScenarios } = permissions;
 
@@ -30,23 +33,31 @@ export function ScenariosCard({
   const hasScenarios = scenarios.length > 0;
 
   return (
-    <div className={permissions.canViewProfiles ? "md:col-span-8" : "md:col-span-12"}>
+    <div className="flex-1 flex flex-col">
       <Card className="h-full flex flex-col">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileCog className="h-5 w-5" /> Cenários de Teste
-            </CardTitle>
-            <CardDescription>
-              Gerenciando cenários de:{" "}
-              <span className="font-bold text-primary">
-                {selectedProfileName || "Selecione..."}
-              </span>
-            </CardDescription>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileCog className="h-5 w-5" /> Cenários de Teste
+              </CardTitle>
+              <CardDescription>
+                Gerenciando cenários de:{" "}
+                <span className="font-bold text-primary">
+                  {selectedProfileName || "Selecione..."}
+                </span>
+              </CardDescription>
+            </div>
+            {hasSelectedProfile && canManageScenarios && (
+              <div className="flex items-center gap-2">
+                <ScenarioBatchImport profileId={selectedProfileId!} />
+                <ScenarioEditor
+                  profileId={selectedProfileId!}
+                  taxRuleNames={taxRuleNames}
+                />
+              </div>
+            )}
           </div>
-          {hasSelectedProfile && canManageScenarios && (
-            <ScenarioEditor profileId={selectedProfileId!} />
-          )}
         </CardHeader>
 
         <CardContent className="flex-1 overflow-y-auto bg-muted/30 p-6">
@@ -91,14 +102,6 @@ export function ScenariosCard({
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {scenario.reforma_tributaria && (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] border-blue-400/50 bg-blue-500/10 text-blue-600 dark:text-blue-400 dark:border-blue-500/30 dark:bg-blue-500/20"
-                        >
-                          Reforma Trib.
-                        </Badge>
-                      )}
                       {scenario.editar_data && (
                         <Badge variant="outline" className="text-[10px]">
                           Data
@@ -119,11 +122,6 @@ export function ScenariosCard({
                           Série
                         </Badge>
                       )}
-                      {scenario.aplicar_reducao_aliq && (
-                        <Badge variant="outline" className="text-[10px]">
-                          Redução Alíquota
-                        </Badge>
-                      )}
                       {scenario.editar_destinatario_pj && (
                         <Badge variant="outline" className="text-[10px]">
                           Dest. PJ
@@ -134,34 +132,19 @@ export function ScenariosCard({
                           Dest. PF
                         </Badge>
                       )}
+                      {scenario.editar_destinatario_remessa && (
+                        <Badge variant="outline" className="text-[10px]">
+                          Dest. Remessa (CD ML)
+                        </Badge>
+                      )}
                       {scenario.editar_produtos && (
                         <Badge variant="outline" className="text-[10px]">
                           Produtos
                         </Badge>
                       )}
-                      {scenario.editar_impostos && (
-                        <Badge variant="outline" className="text-[10px]">
-                          Impostos
-                        </Badge>
-                      )}
                       {scenario.editar_refNFe && (
                         <Badge variant="outline" className="text-[10px]">
                           Ref. NFe
-                        </Badge>
-                      )}
-                      {scenario.editar_cst && (
-                        <Badge variant="outline" className="text-[10px]">
-                          CST
-                        </Badge>
-                      )}
-                      {scenario.zerar_ipi_remessa_retorno && (
-                        <Badge variant="outline" className="text-[10px]">
-                          Zerar IPI Remessa/Retorno
-                        </Badge>
-                      )}
-                      {scenario.zerar_ipi_venda && (
-                        <Badge variant="outline" className="text-[10px]">
-                          Zerar IPI Venda
                         </Badge>
                       )}
                     </div>
@@ -173,10 +156,12 @@ export function ScenariosCard({
                         profileId={selectedProfileId!}
                         scenarioToEdit={scenario}
                         isDuplicating
+                        taxRuleNames={taxRuleNames}
                       />
                       <ScenarioEditor
                         profileId={selectedProfileId!}
                         scenarioToEdit={scenario}
+                        taxRuleNames={taxRuleNames}
                       />
                     </div>
                   )}
@@ -189,4 +174,3 @@ export function ScenariosCard({
     </div>
   );
 }
-

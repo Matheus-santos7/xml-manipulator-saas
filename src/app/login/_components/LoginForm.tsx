@@ -100,7 +100,7 @@ export function LoginForm() {
         </form>
 
         <p className="mt-6 text-xs text-center text-muted-foreground">
-          Sistema de gerenciamento e manipulação de XMLs fiscais
+          Sistema de gerenciamento e manipulação de XMLs
         </p>
       </CardContent>
     </Card>

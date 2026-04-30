@@ -9,6 +9,7 @@
 export interface DestinatarioDisponivel {
   tipo: "PJ" | "PF";
   nomeFantasia?: string;
+  centroDistribuicao?: string;
   CNPJ?: string;
   CPF?: string;
   IE?: string;
@@ -16,6 +17,7 @@ export interface DestinatarioDisponivel {
   xLgr: string;
   nro: string;
   xBairro: string;
+  cMun?: string;
   xMun: string;
   UF: string;
   CEP: string;
@@ -23,7 +25,7 @@ export interface DestinatarioDisponivel {
 }
 
 // Lista de destinatários disponíveis para sorteio
-export const DESTINATARIOS_DISPONIVEIS: DestinatarioDisponivel[] = [
+const DESTINATARIOS_DISPONIVEIS_BASE: DestinatarioDisponivel[] = [
   // === PESSOA JURÍDICA ===
   {
     tipo: "PJ",
@@ -773,6 +775,49 @@ export const DESTINATARIOS_DISPONIVEIS: DestinatarioDisponivel[] = [
     fone: "63988880027",
   },
 ];
+
+const IBGE_CMUN_POR_CIDADE_UF: Record<string, string> = {
+  "Campinas-SP": "3509502",
+  "Belo Horizonte-MG": "3106200",
+  "Rio de Janeiro-RJ": "3304557",
+  "Rio Branco-AC": "1200401",
+  "Maceió-AL": "2704302",
+  "Macapá-AP": "1600303",
+  "Manaus-AM": "1302603",
+  "Salvador-BA": "2927408",
+  "Fortaleza-CE": "2304400",
+  "Brasília-DF": "5300108",
+  "Vitória-ES": "3205309",
+  "Goiânia-GO": "5208707",
+  "São Luís-MA": "2111300",
+  "Cuiabá-MT": "5103403",
+  "Campo Grande-MS": "5002704",
+  "Belém-PA": "1501402",
+  "João Pessoa-PB": "2507507",
+  "Curitiba-PR": "4106902",
+  "Recife-PE": "2611606",
+  "Teresina-PI": "2211001",
+  "Natal-RN": "2408102",
+  "Porto Alegre-RS": "4314902",
+  "Porto Velho-RO": "1100205",
+  "Boa Vista-RR": "1400100",
+  "Florianópolis-SC": "4205407",
+  "São Paulo-SP": "3550308",
+  "Aracaju-SE": "2800308",
+  "Palmas-TO": "1721000",
+};
+
+export const DESTINATARIOS_DISPONIVEIS: DestinatarioDisponivel[] =
+  DESTINATARIOS_DISPONIVEIS_BASE.map((destinatario) => {
+    if (destinatario.cMun && /^\d{7}$/.test(destinatario.cMun)) {
+      return destinatario;
+    }
+    const key = `${destinatario.xMun}-${destinatario.UF}`;
+    return {
+      ...destinatario,
+      cMun: IBGE_CMUN_POR_CIDADE_UF[key] || "",
+    };
+  });
 
 /**
  * Função auxiliar para sortear um destinatário

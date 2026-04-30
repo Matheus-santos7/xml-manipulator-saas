@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Schema de validação para dados do emitente da nota fiscal.
+ * Schema de validação para dados do emitente.
  * Aceita tanto 'cnpj' quanto 'CNPJ' e normaliza para 'cnpj'.
  */
 export const emitenteSchema = z
@@ -13,6 +13,7 @@ export const emitenteSchema = z
     nro: z.string().optional().nullable(),
     xCpl: z.string().optional().nullable(),
     xBairro: z.string().optional().nullable(),
+    cMun: z.string().optional().nullable(),
     xMun: z.string().optional().nullable(),
     UF: z.string().optional().nullable(),
     CEP: z.string().optional().nullable(),
@@ -26,6 +27,7 @@ export const emitenteSchema = z
     nro: data.nro,
     xCpl: data.xCpl,
     xBairro: data.xBairro,
+    cMun: data.cMun,
     xMun: data.xMun,
     UF: data.UF,
     CEP: data.CEP,
@@ -34,7 +36,7 @@ export const emitenteSchema = z
   }));
 
 /**
- * Schema de validação para dados do destinatário da nota fiscal.
+ * Schema de validação para dados do destinatário.
  * Suporta tanto CNPJ (PJ) quanto CPF (PF).
  */
 export const destinatarioSchema = z
@@ -43,11 +45,13 @@ export const destinatarioSchema = z
     CNPJ: z.string().optional().nullable(),
     cpf: z.string().optional().nullable(),
     CPF: z.string().optional().nullable(),
+    centroDistribuicao: z.string().optional().nullable(),
     xNome: z.string().optional().nullable(),
     IE: z.string().optional().nullable(),
     xLgr: z.string().optional().nullable(),
     nro: z.string().optional().nullable(),
     xBairro: z.string().optional().nullable(),
+    cMun: z.string().optional().nullable(),
     xMun: z.string().optional().nullable(),
     UF: z.string().optional().nullable(),
     CEP: z.string().optional().nullable(),
@@ -56,11 +60,13 @@ export const destinatarioSchema = z
   .transform((data) => ({
     cnpj: data.cnpj ?? data.CNPJ,
     cpf: data.cpf ?? data.CPF,
+    centroDistribuicao: data.centroDistribuicao,
     xNome: data.xNome,
     IE: data.IE,
     xLgr: data.xLgr,
     nro: data.nro,
     xBairro: data.xBairro,
+    cMun: data.cMun,
     xMun: data.xMun,
     UF: data.UF,
     CEP: data.CEP,
@@ -68,30 +74,21 @@ export const destinatarioSchema = z
   }));
 
 /**
- * Schema de validação para dados de produto da nota fiscal.
+ * Schema de validação para dados de produto.
  */
 export const produtoSchema = z.object({
   xProd: z.string().optional().nullable(),
   cEAN: z.string().optional().nullable(),
   cProd: z.string().optional().nullable(),
   NCM: z.string().optional().nullable(),
+  regraTributariaNome: z.string().optional().nullable(),
   origem: z.string().optional().nullable(), // Origem do produto: "0", "1", "2", "3", "4", "6", "7", "8"
+  vUnComVenda: z.string().optional().nullable(),
+  vUnComTransferencia: z.string().optional().nullable(),
+  pesoBruto: z.string().optional().nullable(),
+  pesoLiquido: z.string().optional().nullable(),
   isPrincipal: z.boolean().default(false),
   ordem: z.number().default(0),
-});
-
-/**
- * Schema de validação para impostos padrão de um cenário.
- */
-export const impostoSchema = z.object({
-  tipoTributacao: z.string().optional().nullable(), // TRIBUTADO ou NAO_TRIBUTADO
-  pFCP: z.string().optional().nullable(),
-  pICMS: z.string().optional().nullable(),
-  pICMSUFDest: z.string().optional().nullable(),
-  pICMSInter: z.string().optional().nullable(),
-  pPIS: z.string().optional().nullable(),
-  pCOFINS: z.string().optional().nullable(),
-  pIPI: z.string().optional().nullable(),
 });
 
 /**
@@ -110,14 +107,11 @@ export const scenarioSchema = z.object({
   editar_emitente: z.boolean().optional(),
   editar_destinatario_pj: z.boolean().optional(),
   editar_destinatario_pf: z.boolean().optional(),
+  editar_destinatario_remessa: z.boolean().optional(),
+  destinatarioRemessaMlCdId: z.string().optional().nullable(),
   editar_produtos: z.boolean().optional(),
-  editar_impostos: z.boolean().optional(),
+  aplicar_regras_tributarias: z.boolean().optional(),
   editar_refNFe: z.boolean().optional(),
-  editar_cst: z.boolean().optional(),
-  reforma_tributaria: z.boolean().optional(),
-  zerar_ipi_remessa_retorno: z.boolean().optional(),
-  zerar_ipi_venda: z.boolean().optional(),
-  aplicar_reducao_aliq: z.boolean().optional(),
   // Dados Básicos
   nova_data: z.string().optional(),
   nova_serie: z.string().optional(),

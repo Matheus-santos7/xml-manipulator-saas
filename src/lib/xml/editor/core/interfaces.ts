@@ -1,5 +1,5 @@
 /**
- * Interface abstrata para edição de XMLs fiscais
+ * Interface abstrata para edição de XMLs
  * Define o contrato que todos os editores devem implementar
  */
 

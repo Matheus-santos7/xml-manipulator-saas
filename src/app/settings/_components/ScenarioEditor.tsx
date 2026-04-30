@@ -17,6 +17,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Dialog,
@@ -58,31 +59,11 @@ import {
   Shuffle,
 } from "lucide-react";
 import { DESTINATARIOS_DISPONIVEIS } from "@/lib/constants";
+import { MELI_CDS } from "@/lib/constants/meli-cds";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Schema Zod para validação do formulário
 // ─────────────────────────────────────────────────────────────────────────────
-
-// Tipos de operação disponíveis para mapeamento de CST
-const TIPOS_OPERACAO = ["VENDA", "DEVOLUCAO", "RETORNO", "REMESSA"] as const;
-
-const cstMappingSchema = z.object({
-  tipoOperacao: z.enum(TIPOS_OPERACAO),
-  icms: z.string().optional(),
-  ipi: z.string().optional(),
-  pis: z.string().optional(),
-  cofins: z.string().optional(),
-});
-
-// Schema para regras de Reforma Tributária (IBS/CBS)
-const taxReformRuleSchema = z.object({
-  pIBSUF: z.string().optional(),
-  pIBSMun: z.string().optional(),
-  pCBS: z.string().optional(),
-  vDevTrib: z.string().optional(),
-  cClassTrib: z.string().optional(),
-  CST: z.string().optional(),
-});
 
 const emitenteSchema = z.object({
   cnpj: z.string().optional(),
@@ -91,6 +72,7 @@ const emitenteSchema = z.object({
   nro: z.string().optional(),
   xCpl: z.string().optional(),
   xBairro: z.string().optional(),
+  cMun: z.string().optional(),
   xMun: z.string().optional(),
   UF: z.string().optional(),
   CEP: z.string().optional(),
@@ -101,11 +83,13 @@ const emitenteSchema = z.object({
 const destinatarioSchema = z.object({
   cnpj: z.string().optional(),
   cpf: z.string().optional(),
+  centroDistribuicao: z.string().optional(),
   xNome: z.string().optional(),
   IE: z.string().optional(),
   xLgr: z.string().optional(),
   nro: z.string().optional(),
   xBairro: z.string().optional(),
+  cMun: z.string().optional(),
   xMun: z.string().optional(),
   UF: z.string().optional(),
   CEP: z.string().optional(),
@@ -117,20 +101,14 @@ const produtoSchema = z.object({
   cEAN: z.string().optional(),
   cProd: z.string().optional(),
   NCM: z.string().optional(),
+  regraTributariaNome: z.string().optional(),
   origem: z.string().optional(), // Origem do produto
+  vUnComVenda: z.string().optional(),
+  vUnComTransferencia: z.string().optional(),
+  pesoBruto: z.string().optional(),
+  pesoLiquido: z.string().optional(),
   isPrincipal: z.boolean().default(false),
   ordem: z.number().default(0),
-});
-
-const impostosSchema = z.object({
-  tipoTributacao: z.string().optional(),
-  pFCP: z.string().optional(),
-  pICMS: z.string().optional(),
-  pICMSUFDest: z.string().optional(),
-  pICMSInter: z.string().optional(),
-  pPIS: z.string().optional(),
-  pCOFINS: z.string().optional(),
-  pIPI: z.string().optional(),
 });
 
 const formSchema = z.object({
@@ -143,17 +121,14 @@ const formSchema = z.object({
   editar_emitente: z.boolean().default(false),
   editar_destinatario_pj: z.boolean().default(false),
   editar_destinatario_pf: z.boolean().default(false),
+  editar_destinatario_remessa: z.boolean().default(false),
+  destinatarioRemessaMlCdId: z.string().optional(),
   editar_produtos: z.boolean().default(false),
-  editar_impostos: z.boolean().default(false),
+  aplicar_regras_tributarias: z.boolean().default(false),
   editar_data: z.boolean().default(false),
   editar_refNFe: z.boolean().default(false),
-  editar_cst: z.boolean().default(false),
-  zerar_ipi_remessa_retorno: z.boolean().default(false),
-  zerar_ipi_venda: z.boolean().default(false),
-  reforma_tributaria: z.boolean().default(false),
   alterar_serie: z.boolean().default(false),
   alterar_cUF: z.boolean().default(false),
-  aplicar_reducao_aliq: z.boolean().default(false),
 
   // Dados simples
   nova_data: z.string().optional(),
@@ -164,13 +139,6 @@ const formSchema = z.object({
   emitenteData: emitenteSchema.optional(),
   destinatarioData: destinatarioSchema.optional(),
   produtoData: z.array(produtoSchema).default([]),
-  impostosData: impostosSchema.optional(),
-
-  // Mapeamentos CST
-  cstMappings: z.array(cstMappingSchema).optional(),
-
-  // Reforma Tributária (IBS/CBS)
-  taxReformRule: taxReformRuleSchema.optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -183,6 +151,11 @@ interface ScenarioEditorProps {
   scenarioToEdit?: ScenarioDB | null;
   onSaved?: () => void;
   isDuplicating?: boolean; // Quando true, cria um novo cenário baseado no scenarioToEdit
+  /**
+   * Lista de nomes de regras tributárias importadas para o profile atual.
+   * Quando vazia, o campo cai num input de texto livre.
+   */
+  taxRuleNames?: string[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -193,6 +166,7 @@ export function ScenarioEditor({
   scenarioToEdit,
   onSaved,
   isDuplicating = false,
+  taxRuleNames = [],
 }: ScenarioEditorProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -201,17 +175,13 @@ export function ScenarioEditor({
   // Se estiver duplicando, não é edição (cria novo cenário)
   const isEditing = !!scenarioToEdit && !isDuplicating;
 
-  // Valores padrão baseados no cenário existente ou vazios
-  // Usa useMemo com scenarioToEdit completo como dependência
   const defaultValues: FormValues = useMemo(() => {
-    // Helper para converter valores para string vazia
     const str = (val: unknown): string => {
       if (val === null || val === undefined) return "";
       if (typeof val === "string") return val;
       return String(val);
     };
 
-    // Extrair dados do emitente
     const getEmitenteData = (): Record<string, string> => {
       const data =
         scenarioToEdit?.ScenarioEmitente ||
@@ -226,6 +196,7 @@ export function ScenarioEditor({
         nro: str(d.nro),
         xCpl: str(d.xCpl),
         xBairro: str(d.xBairro),
+        cMun: str(d.cMun),
         xMun: str(d.xMun),
         UF: str(d.UF),
         CEP: str(d.CEP),
@@ -234,7 +205,6 @@ export function ScenarioEditor({
       };
     };
 
-    // Extrair dados do destinatário
     const getDestinatarioData = (): Record<string, string> => {
       const data =
         scenarioToEdit?.ScenarioDestinatario ||
@@ -246,11 +216,13 @@ export function ScenarioEditor({
       return {
         cnpj: str(d.cnpj ?? d.CNPJ),
         cpf: str(d.cpf ?? d.CPF),
+        centroDistribuicao: str(d.centroDistribuicao ?? d.nomeFantasia),
         xNome: str(d.xNome),
         IE: str(d.IE),
         xLgr: str(d.xLgr),
         nro: str(d.nro),
         xBairro: str(d.xBairro),
+        cMun: str(d.cMun),
         xMun: str(d.xMun),
         UF: str(d.UF),
         CEP: str(d.CEP),
@@ -258,14 +230,12 @@ export function ScenarioEditor({
       };
     };
 
-    // Extrair dados dos produtos (array)
     const getProdutoData = () => {
       const data =
         scenarioToEdit?.ScenarioProduto || scenarioToEdit?.produtoData;
 
       if (!data) return [];
 
-      // Se for array, converte cada item
       if (Array.isArray(data)) {
         return data
           .map((d) => ({
@@ -273,14 +243,18 @@ export function ScenarioEditor({
             cProd: str(d.cProd),
             cEAN: str(d.cEAN),
             NCM: str(d.NCM),
+            regraTributariaNome: str(d.regraTributariaNome),
             origem: str(d.origem),
+            vUnComVenda: str(d.vUnComVenda),
+            vUnComTransferencia: str(d.vUnComTransferencia),
+            pesoBruto: str(d.pesoBruto),
+            pesoLiquido: str(d.pesoLiquido),
             isPrincipal: Boolean(d.isPrincipal ?? false),
             ordem: Number(d.ordem ?? 0),
           }))
           .sort((a, b) => a.ordem - b.ordem);
       }
 
-      // Compatibilidade: se for objeto único, converte para array
       const d = data as Record<string, unknown>;
       return [
         {
@@ -288,122 +262,52 @@ export function ScenarioEditor({
           cProd: str(d.cProd),
           cEAN: str(d.cEAN),
           NCM: str(d.NCM),
+          regraTributariaNome: str(d.regraTributariaNome),
           origem: str(d.origem),
+          vUnComVenda: str(d.vUnComVenda),
+          vUnComTransferencia: str(d.vUnComTransferencia),
+          pesoBruto: str(d.pesoBruto),
+          pesoLiquido: str(d.pesoLiquido),
           isPrincipal: true,
           ordem: 1,
         },
       ];
     };
 
-    // Extrair dados dos impostos
-    const getImpostosData = (): Record<string, string> => {
-      const data =
-        scenarioToEdit?.ScenarioImposto ||
-        scenarioToEdit?.impostosData ||
-        scenarioToEdit?.impostos_padrao;
-      if (!data) return {};
-      const d = data as Record<string, unknown>;
-      return {
-        tipoTributacao: str(d.tipoTributacao),
-        pFCP: str(d.pFCP),
-        pICMS: str(d.pICMS),
-        pICMSUFDest: str(d.pICMSUFDest),
-        pICMSInter: str(d.pICMSInter),
-        pPIS: str(d.pPIS),
-        pCOFINS: str(d.pCOFINS),
-        pIPI: str(d.pIPI),
-      };
-    };
-
-    // Nome do cenário: se duplicando, adiciona " (Cópia)"
     const scenarioName = isDuplicating
       ? `${scenarioToEdit?.name ?? ""} (Cópia)`
       : scenarioToEdit?.name ?? "";
 
     return {
-      // Se duplicando, não passa o id para criar um novo cenário
       id: isDuplicating ? undefined : scenarioToEdit?.id,
       profileId,
       name: scenarioName,
       active: scenarioToEdit?.active ?? true,
-
-      // Flags
       editar_emitente: scenarioToEdit?.editar_emitente ?? false,
       editar_destinatario_pj: scenarioToEdit?.editar_destinatario_pj ?? false,
       editar_destinatario_pf: scenarioToEdit?.editar_destinatario_pf ?? false,
+      editar_destinatario_remessa:
+        scenarioToEdit?.editar_destinatario_remessa ?? false,
+      destinatarioRemessaMlCdId:
+        scenarioToEdit?.destinatarioRemessaMlCdId ?? "",
       editar_produtos: scenarioToEdit?.editar_produtos ?? false,
-      editar_impostos: scenarioToEdit?.editar_impostos ?? false,
+      aplicar_regras_tributarias:
+        scenarioToEdit?.aplicar_regras_tributarias ?? false,
       editar_data: scenarioToEdit?.editar_data ?? false,
       editar_refNFe: scenarioToEdit?.editar_refNFe ?? false,
-      editar_cst: scenarioToEdit?.editar_cst ?? false,
-      zerar_ipi_remessa_retorno:
-        scenarioToEdit?.zerar_ipi_remessa_retorno ?? false,
-      zerar_ipi_venda: scenarioToEdit?.zerar_ipi_venda ?? false,
-      reforma_tributaria: scenarioToEdit?.reforma_tributaria ?? false,
       alterar_serie: scenarioToEdit?.alterar_serie ?? false,
       alterar_cUF: scenarioToEdit?.alterar_cUF ?? false,
-      aplicar_reducao_aliq: scenarioToEdit?.aplicar_reducao_aliq ?? false,
-
-      // Dados simples
       nova_data: scenarioToEdit?.nova_data ?? "",
       nova_serie: scenarioToEdit?.nova_serie ?? "",
       novo_cUF: scenarioToEdit?.novo_cUF ?? "",
-
-      // Dados normalizados
       emitenteData: getEmitenteData(),
       destinatarioData: getDestinatarioData(),
       produtoData: getProdutoData(),
-      impostosData: getImpostosData(),
-
-      // CST Mappings
-      cstMappings:
-        (scenarioToEdit?.CstMapping || scenarioToEdit?.cstMappings)?.map(
-          (m) => ({
-            tipoOperacao: m.tipoOperacao as
-              | "VENDA"
-              | "DEVOLUCAO"
-              | "RETORNO"
-              | "REMESSA",
-            icms: m.icms ?? "",
-            ipi: m.ipi ?? "",
-            pis: m.pis ?? "",
-            cofins: m.cofins ?? "",
-          })
-        ) ?? [],
-
-      // Tax Reform Rule (IBS/CBS)
-      taxReformRule: (() => {
-        const rules =
-          scenarioToEdit?.TaxReformRule || scenarioToEdit?.taxReformRules;
-        const rule = Array.isArray(rules) ? rules[0] : rules;
-        if (!rule)
-          return {
-            pIBSUF: "",
-            pIBSMun: "",
-            pCBS: "",
-            vDevTrib: "0.00",
-            cClassTrib: "000001",
-            CST: "000",
-          };
-        return {
-          pIBSUF: str(rule.pIBSUF),
-          pIBSMun: str(rule.pIBSMun),
-          pCBS: str(rule.pCBS),
-          vDevTrib: str(rule.vDevTrib) || "0.00",
-          cClassTrib: str(rule.cClassTrib) || "000001",
-          CST: str(rule.CST) || "000",
-        };
-      })(),
     };
-  }, [profileId, scenarioToEdit, isDuplicating]); // Depende também do isDuplicating
+  }, [profileId, scenarioToEdit, isDuplicating]);
 
   const form = useForm({
     defaultValues,
-  });
-
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "cstMappings",
   });
 
   const {
@@ -431,10 +335,10 @@ export function ScenarioEditor({
   const watchEditarEmitente = form.watch("editar_emitente");
   const watchEditarDestinatarioPJ = form.watch("editar_destinatario_pj");
   const watchEditarDestinatarioPF = form.watch("editar_destinatario_pf");
+  const watchEditarDestinatarioRemessa = form.watch(
+    "editar_destinatario_remessa"
+  );
   const watchEditarProdutos = form.watch("editar_produtos");
-  const watchEditarImpostos = form.watch("editar_impostos");
-  const watchEditarCst = form.watch("editar_cst");
-  const watchReformaTributaria = form.watch("reforma_tributaria");
 
   // Estados para loading das buscas
   const [loadingCep, setLoadingCep] = useState<
@@ -472,6 +376,12 @@ export function ScenarioEditor({
         `${prefix}.xBairro` as keyof FormValues,
         data.xBairro || ""
       );
+      if (tipo === "emitente" || tipo === "destinatario") {
+        form.setValue(
+          `${prefix}.cMun` as keyof FormValues,
+          String(data.cMun || "")
+        );
+      }
       form.setValue(`${prefix}.xMun` as keyof FormValues, data.xMun || "");
       form.setValue(`${prefix}.UF` as keyof FormValues, data.UF || "");
       if (data.xCpl) {
@@ -518,6 +428,12 @@ export function ScenarioEditor({
         `${prefix}.xBairro` as keyof FormValues,
         data.xBairro || ""
       );
+      if (tipo === "emitente" || tipo === "destinatario") {
+        form.setValue(
+          `${prefix}.cMun` as keyof FormValues,
+          String(data.cMun || "")
+        );
+      }
       form.setValue(`${prefix}.xMun` as keyof FormValues, data.xMun || "");
       form.setValue(`${prefix}.UF` as keyof FormValues, data.UF || "");
       form.setValue(`${prefix}.CEP` as keyof FormValues, data.CEP || "");
@@ -533,6 +449,54 @@ export function ScenarioEditor({
   }
 
   async function onSubmit(values: FieldValues) {
+    const emitenteData = (values.emitenteData || {}) as Record<string, unknown>;
+    const destinatarioData = (values.destinatarioData ||
+      {}) as Record<string, unknown>;
+
+    const cMunEmitente = String(emitenteData.cMun || "").trim();
+    const cMunDestinatario = String(destinatarioData.cMun || "").trim();
+    const ufEmitente = String(emitenteData.UF || "")
+      .trim()
+      .toUpperCase();
+    const ieEmitente = String(emitenteData.IE || "").trim();
+
+    const cMunEmitenteValido = /^\d{7}$/.test(cMunEmitente);
+    const cMunDestinatarioValido = /^\d{7}$/.test(cMunDestinatario);
+
+    if (values.editar_emitente && !cMunEmitente) {
+      toast.error(
+        "Preencha o cMun (código IBGE) do emitente para salvar o cenário."
+      );
+      return;
+    }
+    if (values.editar_emitente && !cMunEmitenteValido) {
+      toast.error("O cMun do emitente deve conter exatamente 7 dígitos.");
+      return;
+    }
+    if (values.editar_emitente && ufEmitente && !ieEmitente) {
+      toast.error(
+        `Para saída em ${ufEmitente}, preencha a Inscrição Estadual (IE) do emitente.`
+      );
+      return;
+    }
+
+    if (
+      (values.editar_destinatario_pj || values.editar_destinatario_pf) &&
+      !cMunDestinatario
+    ) {
+      toast.error(
+        "Preencha o cMun (código IBGE) do destinatário para salvar o cenário."
+      );
+      return;
+    }
+    if (
+      (values.editar_destinatario_pj || values.editar_destinatario_pf) &&
+      !cMunDestinatarioValido
+    ) {
+      toast.error("O cMun do destinatário deve conter exatamente 7 dígitos.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await saveScenario(values as Parameters<typeof saveScenario>[0]);
@@ -671,8 +635,7 @@ export function ScenarioEditor({
                     <AlertDialogDescription>
                       Tem certeza que deseja excluir o cenário &quot;
                       {scenarioToEdit?.name}&quot;? Esta ação não pode ser
-                      desfeita e todos os mapeamentos CST associados serão
-                      removidos.
+                      desfeita.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -698,14 +661,11 @@ export function ScenarioEditor({
                 defaultValue="geral"
                 className="flex-1 flex flex-col overflow-hidden"
               >
-                <TabsList className="grid w-full grid-cols-7 gap-1">
+                <TabsList className="grid w-full grid-cols-4 gap-1">
                   <TabsTrigger value="geral">Geral</TabsTrigger>
                   <TabsTrigger value="emitente">Emitente</TabsTrigger>
                   <TabsTrigger value="destinatario">Destinatário</TabsTrigger>
                   <TabsTrigger value="produto">Produto</TabsTrigger>
-                  <TabsTrigger value="impostos">Impostos</TabsTrigger>
-                  <TabsTrigger value="cst">Mapeamento CST</TabsTrigger>
-                  <TabsTrigger value="reforma">Reforma Tributária</TabsTrigger>
                 </TabsList>
 
                 <div className="flex-1 overflow-y-auto pr-4 mt-4 max-h-[calc(90vh-220px)]">
@@ -872,6 +832,24 @@ export function ScenarioEditor({
 
                       <FormField
                         control={form.control}
+                        name="editar_destinatario_remessa"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between rounded-lg border p-2">
+                            <FormLabel className="text-sm">
+                              Destinatário Remessa (CD ML)
+                            </FormLabel>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
                         name="editar_produtos"
                         render={({ field }) => (
                           <FormItem className="flex items-center justify-between rounded-lg border p-2">
@@ -890,11 +868,11 @@ export function ScenarioEditor({
 
                       <FormField
                         control={form.control}
-                        name="editar_impostos"
+                        name="aplicar_regras_tributarias"
                         render={({ field }) => (
                           <FormItem className="flex items-center justify-between rounded-lg border p-2">
                             <FormLabel className="text-sm">
-                              Editar Impostos
+                              Aplicar regras tributárias
                             </FormLabel>
                             <FormControl>
                               <Switch
@@ -906,95 +884,6 @@ export function ScenarioEditor({
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="editar_cst"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-2">
-                            <FormLabel className="text-sm">
-                              Editar CST
-                            </FormLabel>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="zerar_ipi_remessa_retorno"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-2">
-                            <FormLabel className="text-sm">
-                              Zerar IPI Rem/Ret
-                            </FormLabel>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="zerar_ipi_venda"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-2">
-                            <FormLabel className="text-sm">
-                              Zerar IPI Venda
-                            </FormLabel>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="reforma_tributaria"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-2">
-                            <FormLabel className="text-sm">
-                              Reforma Tributária
-                            </FormLabel>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="aplicar_reducao_aliq"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between rounded-lg border p-2">
-                            <FormLabel className="text-sm">
-                              Redução Alíquota
-                            </FormLabel>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
                     </div>
 
                     {/* Campos condicionais em grid */}
@@ -1050,144 +939,6 @@ export function ScenarioEditor({
                     </div>
                   </TabsContent>
 
-                  {/* ─────────────── ABA MAPEAMENTO CST ─────────────── */}
-                  <TabsContent value="cst" className="space-y-4 mt-0">
-                    {!watchEditarCst && (
-                      <p className="text-sm text-muted-foreground p-4 border rounded-lg">
-                        Ative a opção &quot;Editar CST&quot; na aba Geral para
-                        configurar os mapeamentos.
-                      </p>
-                    )}
-
-                    {watchEditarCst && (
-                      <div className="space-y-3 border rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <FormLabel className="text-base">
-                            Mapeamentos CST por Tipo de Operação
-                          </FormLabel>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              append({
-                                tipoOperacao: "VENDA",
-                                icms: "",
-                                ipi: "",
-                                pis: "",
-                                cofins: "",
-                              })
-                            }
-                          >
-                            <Plus className="h-4 w-4 mr-1" /> Adicionar
-                          </Button>
-                        </div>
-
-                        {fields.length === 0 && (
-                          <p className="text-sm text-muted-foreground">
-                            Nenhum mapeamento configurado
-                          </p>
-                        )}
-
-                        {fields.map((field, index) => (
-                          <div
-                            key={field.id}
-                            className="grid grid-cols-6 gap-2 items-end"
-                          >
-                            <FormField
-                              control={form.control}
-                              name={`cstMappings.${index}.tipoOperacao`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">
-                                    Tipo Operação
-                                  </FormLabel>
-                                  <Select
-                                    onValueChange={field.onChange}
-                                    value={field.value}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Selecione" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {TIPOS_OPERACAO.map((tipo) => (
-                                        <SelectItem key={tipo} value={tipo}>
-                                          {tipo}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`cstMappings.${index}.icms`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">
-                                    ICMS
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="00" {...field} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`cstMappings.${index}.ipi`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">IPI</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="50" {...field} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`cstMappings.${index}.pis`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">PIS</FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="01" {...field} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`cstMappings.${index}.cofins`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-xs">
-                                    COFINS
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="01" {...field} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => remove(index)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </TabsContent>
 
                   {/* ─────────────── ABA EMITENTE ─────────────── */}
                   <TabsContent value="emitente" className="space-y-4 mt-0">
@@ -1375,7 +1126,29 @@ export function ScenarioEditor({
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="emitenteData.cMun"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>cMun (IBGE)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="3550308"
+                                    inputMode="numeric"
+                                    maxLength={7}
+                                    {...field}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value.replace(/\D/g, "").slice(0, 7)
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
                           <FormField
                             control={form.control}
                             name="emitenteData.xMun"
@@ -1411,12 +1184,67 @@ export function ScenarioEditor({
 
                   {/* ─────────────── ABA DESTINATÁRIO ─────────────── */}
                   <TabsContent value="destinatario" className="space-y-4 mt-0">
+                    {watchEditarDestinatarioRemessa && (
+                      <div className="space-y-3 rounded-lg border p-4 bg-blue-50/40 dark:bg-blue-950/20">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h4 className="text-sm font-semibold">
+                              Destinatário de Remessa (CD Mercado Livre)
+                            </h4>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Quando ativo, NFes com CFOP de remessa/retorno
+                              (5901-5949 / 6901-6949) terão a tag{" "}
+                              <code>&lt;dest&gt;</code> reescrita com os dados
+                              do CD selecionado abaixo. Isso garante que a UF
+                              de destino bata com a regra tributária aplicada.
+                            </p>
+                          </div>
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="destinatarioRemessaMlCdId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm">
+                                Centro de Distribuição
+                              </FormLabel>
+                              <Select
+                                value={field.value || ""}
+                                onValueChange={field.onChange}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o CD do Mercado Livre" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent className="max-h-80">
+                                  {MELI_CDS.map((cd) => (
+                                    <SelectItem key={cd.id} value={cd.id}>
+                                      {cd.uf} • {cd.name} ({cd.cidade})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormDescription className="text-xs">
+                                Os dados de CNPJ, IE, endereço e UF do CD
+                                selecionado substituem os do destinatário
+                                original em notas de remessa/retorno.
+                              </FormDescription>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
+
                     {!watchEditarDestinatarioPJ &&
-                      !watchEditarDestinatarioPF && (
+                      !watchEditarDestinatarioPF &&
+                      !watchEditarDestinatarioRemessa && (
                         <p className="text-sm text-muted-foreground p-4 border rounded-lg">
-                          Ative a opção &quot;Editar Destinatário PJ&quot; ou
-                          &quot;Editar Destinatário PF&quot; na aba Geral para
-                          configurar os dados.
+                          Ative a opção &quot;Editar Destinatário PJ&quot;,
+                          &quot;Editar Destinatário PF&quot; ou
+                          &quot;Destinatário Remessa (CD ML)&quot; na aba
+                          Geral para configurar os dados.
                         </p>
                       )}
 
@@ -1435,7 +1263,7 @@ export function ScenarioEditor({
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => {
+                            onClick={async () => {
                               // Filtra destinatários pelo tipo selecionado
                               const tipoFiltro = watchEditarDestinatarioPJ
                                 ? "PJ"
@@ -1465,6 +1293,21 @@ export function ScenarioEditor({
                                   )
                                 ];
 
+                              let cMunSorteado = String(sorteado.cMun || "");
+                              if (!/^\d{7}$/.test(cMunSorteado)) {
+                                try {
+                                  const cepRes = await fetch(
+                                    `/api/cep?cep=${sorteado.CEP}`
+                                  );
+                                  if (cepRes.ok) {
+                                    const cepData = await cepRes.json();
+                                    cMunSorteado = String(cepData.cMun || "");
+                                  }
+                                } catch {
+                                  // mantém vazio para edição manual/validação
+                                }
+                              }
+
                               // Preenche os campos do formulário
                               if (watchEditarDestinatarioPJ && sorteado.CNPJ) {
                                 form.setValue(
@@ -1488,6 +1331,12 @@ export function ScenarioEditor({
                                 sorteado.xNome
                               );
                               form.setValue(
+                                "destinatarioData.centroDistribuicao",
+                                sorteado.centroDistribuicao ||
+                                  sorteado.nomeFantasia ||
+                                  ""
+                              );
+                              form.setValue(
                                 "destinatarioData.xLgr",
                                 sorteado.xLgr
                               );
@@ -1499,6 +1348,7 @@ export function ScenarioEditor({
                                 "destinatarioData.xBairro",
                                 sorteado.xBairro
                               );
+                              form.setValue("destinatarioData.cMun", cMunSorteado);
                               form.setValue(
                                 "destinatarioData.xMun",
                                 sorteado.xMun
@@ -1528,6 +1378,21 @@ export function ScenarioEditor({
 
                         {/* Campos para PJ */}
                         <div className="grid grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="destinatarioData.centroDistribuicao"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Centro de Distribuição</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Ex: RC01 (Perus)"
+                                    {...field}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
                           {watchEditarDestinatarioPJ && (
                             <FormField
                               control={form.control}
@@ -1744,7 +1609,29 @@ export function ScenarioEditor({
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="destinatarioData.cMun"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>cMun (IBGE)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="3550308"
+                                    inputMode="numeric"
+                                    maxLength={7}
+                                    {...field}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        e.target.value.replace(/\D/g, "").slice(0, 7)
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
                           <FormField
                             control={form.control}
                             name="destinatarioData.UF"
@@ -1802,7 +1689,12 @@ export function ScenarioEditor({
                                   cEAN: "",
                                   cProd: "",
                                   NCM: "",
+                                  regraTributariaNome: "",
                                   origem: "",
+                                  vUnComVenda: "",
+                                  vUnComTransferencia: "",
+                                  pesoBruto: "",
+                                  pesoLiquido: "",
                                   isPrincipal: produtoFields.length === 0,
                                   ordem: nextOrdem,
                                 });
@@ -1996,11 +1888,86 @@ export function ScenarioEditor({
                               />
                               <FormField
                                 control={form.control}
+                                name={`produtoData.${index}.regraTributariaNome`}
+                                render={({ field }) => {
+                                  const currentValue = field.value || "";
+                                  const optionExists =
+                                    !currentValue ||
+                                    taxRuleNames.includes(currentValue);
+
+                                  if (taxRuleNames.length === 0) {
+                                    return (
+                                      <FormItem>
+                                        <FormLabel className="text-xs">
+                                          Nome da Regra Tributária
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            placeholder="Importe a planilha de regras"
+                                            {...field}
+                                          />
+                                        </FormControl>
+                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                          Nenhuma planilha de regras importada
+                                          ainda.
+                                        </p>
+                                      </FormItem>
+                                    );
+                                  }
+
+                                  return (
+                                    <FormItem>
+                                      <FormLabel className="text-xs">
+                                        Nome da Regra Tributária
+                                      </FormLabel>
+                                      <Select
+                                        value={currentValue || "__none__"}
+                                        onValueChange={(v) =>
+                                          field.onChange(
+                                            v === "__none__" ? "" : v
+                                          )
+                                        }
+                                      >
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Selecione a regra" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="__none__">
+                                            — (sem regra fixa)
+                                          </SelectItem>
+                                          {!optionExists && currentValue && (
+                                            <SelectItem value={currentValue}>
+                                              {currentValue} (não está mais na
+                                              planilha)
+                                            </SelectItem>
+                                          )}
+                                          {taxRuleNames.map((name) => (
+                                            <SelectItem
+                                              key={name}
+                                              value={name}
+                                            >
+                                              {name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <p className="text-[10px] text-muted-foreground mt-1">
+                                        Deixe em branco para usar a melhor
+                                        regra automaticamente.
+                                      </p>
+                                    </FormItem>
+                                  );
+                                }}
+                              />
+                              <FormField
+                                control={form.control}
                                 name={`produtoData.${index}.origem`}
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel className="text-xs">
-                                      Origem (ICMS)
+                                      Origem
                                     </FormLabel>
                                     <Select
                                       value={field.value || ""}
@@ -2043,6 +2010,87 @@ export function ScenarioEditor({
                               />
                             </div>
 
+                            <div className="grid grid-cols-4 gap-3 pt-2 border-t">
+                              <FormField
+                                control={form.control}
+                                name={`produtoData.${index}.vUnComVenda`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">
+                                      Vl. Unit. Venda
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        inputMode="decimal"
+                                        placeholder="69.99"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                      Aplicado em CFOPs de venda/devolução
+                                    </p>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`produtoData.${index}.vUnComTransferencia`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">
+                                      Vl. Unit. Transf./Remessa
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        inputMode="decimal"
+                                        placeholder="17.70"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                      Aplicado em CFOPs de remessa/retorno (custo)
+                                    </p>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`produtoData.${index}.pesoBruto`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">
+                                      Peso Bruto (kg)
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        inputMode="decimal"
+                                        placeholder="0.580"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`produtoData.${index}.pesoLiquido`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">
+                                      Peso Líquido (kg)
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        inputMode="decimal"
+                                        placeholder="0.570"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
                             {/* Campo oculto para ordem */}
                             <FormField
                               control={form.control}
@@ -2068,7 +2116,12 @@ export function ScenarioEditor({
                                   cEAN: "",
                                   cProd: "",
                                   NCM: "",
+                                  regraTributariaNome: "",
                                   origem: "",
+                                  vUnComVenda: "",
+                                  vUnComTransferencia: "",
+                                  pesoBruto: "",
+                                  pesoLiquido: "",
                                   isPrincipal: false,
                                   ordem: nextOrdem,
                                 });
@@ -2083,327 +2136,6 @@ export function ScenarioEditor({
                     )}
                   </TabsContent>
 
-                  {/* ─────────────── ABA IMPOSTOS ─────────────── */}
-                  <TabsContent value="impostos" className="space-y-4 mt-0">
-                    {!watchEditarImpostos && (
-                      <p className="text-sm text-muted-foreground p-4 border rounded-lg">
-                        Ative a opção &quot;Editar Impostos&quot; na aba Geral
-                        para configurar os dados.
-                      </p>
-                    )}
-
-                    {watchEditarImpostos && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="impostosData.tipoTributacao"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Tipo de Tributação</FormLabel>
-                              <Select
-                                value={field.value || ""}
-                                onValueChange={field.onChange}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione..." />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="TRIBUTADO">
-                                    Tributado (ICMS60)
-                                  </SelectItem>
-                                  <SelectItem value="NAO_TRIBUTADO">
-                                    Não Tributado (ICMS00)
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="impostosData.pICMS"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Alíquota ICMS (%)</FormLabel>
-                              <FormControl>
-                                <MaskedInput
-                                  mask="percent"
-                                  placeholder="18,00"
-                                  {...field}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="impostosData.pFCP"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Alíquota FCP (%)</FormLabel>
-                              <FormControl>
-                                <MaskedInput
-                                  mask="percent"
-                                  placeholder="2,00"
-                                  {...field}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="impostosData.pICMSUFDest"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>ICMS UF Destino (%)</FormLabel>
-                              <FormControl>
-                                <MaskedInput
-                                  mask="percent"
-                                  placeholder="0,00"
-                                  {...field}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="impostosData.pICMSInter"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>ICMS Interestadual (%)</FormLabel>
-                              <FormControl>
-                                <MaskedInput
-                                  mask="percent"
-                                  placeholder="0,00"
-                                  {...field}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="impostosData.pPIS"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Alíquota PIS (%)</FormLabel>
-                              <FormControl>
-                                <MaskedInput
-                                  mask="percent"
-                                  placeholder="1,65"
-                                  {...field}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="impostosData.pCOFINS"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Alíquota COFINS (%)</FormLabel>
-                              <FormControl>
-                                <MaskedInput
-                                  mask="percent"
-                                  placeholder="7,60"
-                                  {...field}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="impostosData.pIPI"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Alíquota IPI (%)</FormLabel>
-                              <FormControl>
-                                <MaskedInput
-                                  mask="percent"
-                                  placeholder="5,00"
-                                  {...field}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  {/* ─────────────── ABA REFORMA TRIBUTÁRIA (IBS/CBS) ─────────────── */}
-                  <TabsContent value="reforma" className="space-y-4 mt-0">
-                    {!watchReformaTributaria && (
-                      <p className="text-sm text-muted-foreground p-4 border rounded-lg">
-                        Ative a opção &quot;Reforma Tributária&quot; na aba
-                        Geral para configurar os parâmetros IBS/CBS.
-                      </p>
-                    )}
-
-                    {watchReformaTributaria && (
-                      <div className="space-y-6">
-                        <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
-                          <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">
-                            Reforma Tributária - IBS e CBS
-                          </h4>
-                          <p className="text-sm text-blue-600 dark:text-blue-400">
-                            Configure as alíquotas do IBS (Imposto sobre Bens e
-                            Serviços) e CBS (Contribuição sobre Bens e Serviços)
-                            que serão adicionados aos XMLs processados.
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="taxReformRule.CST"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>CST IBS/CBS</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="000"
-                                    maxLength={3}
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <p className="text-xs text-muted-foreground">
-                                  Código de Situação Tributária do IBS/CBS
-                                </p>
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="taxReformRule.cClassTrib"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Classificação Tributária</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="000001"
-                                    maxLength={6}
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <p className="text-xs text-muted-foreground">
-                                  Código da classificação tributária
-                                </p>
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <div className="border rounded-lg p-4 space-y-4">
-                          <h5 className="font-medium">
-                            Alíquotas IBS (Estadual e Municipal)
-                          </h5>
-                          <div className="grid grid-cols-2 gap-4">
-                            <FormField
-                              control={form.control}
-                              name="taxReformRule.pIBSUF"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Alíquota IBS UF (%)</FormLabel>
-                                  <FormControl>
-                                    <MaskedInput
-                                      mask="percent"
-                                      placeholder="9,50"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <p className="text-xs text-muted-foreground">
-                                    Percentual do IBS destinado à UF
-                                  </p>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="taxReformRule.pIBSMun"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>
-                                    Alíquota IBS Municipal (%)
-                                  </FormLabel>
-                                  <FormControl>
-                                    <MaskedInput
-                                      mask="percent"
-                                      placeholder="3,50"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <p className="text-xs text-muted-foreground">
-                                    Percentual do IBS destinado ao Município
-                                  </p>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="border rounded-lg p-4 space-y-4">
-                          <h5 className="font-medium">
-                            Alíquota CBS (Federal)
-                          </h5>
-                          <div className="grid grid-cols-2 gap-4">
-                            <FormField
-                              control={form.control}
-                              name="taxReformRule.pCBS"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Alíquota CBS (%)</FormLabel>
-                                  <FormControl>
-                                    <MaskedInput
-                                      mask="percent"
-                                      placeholder="8,80"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <p className="text-xs text-muted-foreground">
-                                    Contribuição sobre Bens e Serviços (Federal)
-                                  </p>
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="taxReformRule.vDevTrib"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>
-                                    Devolução Tributária (R$)
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input placeholder="0.00" {...field} />
-                                  </FormControl>
-                                  <p className="text-xs text-muted-foreground">
-                                    Valor de devolução tributária (cashback)
-                                  </p>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="p-4 border rounded-lg bg-amber-50 dark:bg-amber-950">
-                          <p className="text-sm text-amber-700 dark:text-amber-300">
-                            <strong>Nota:</strong> Os valores serão calculados
-                            automaticamente com base no vProd (valor do produto)
-                            de cada item da nota fiscal. Os blocos
-                            &lt;IBSCBS&gt; e &lt;IBSCBSTot&gt; serão adicionados
-                            ao XML.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </TabsContent>
                 </div>
               </Tabs>
 

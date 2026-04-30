@@ -1,5 +1,5 @@
 /**
- * Re-exportação de tipos a partir do núcleo xml-core e módulo de impostos
+ * Re-exportação de tipos a partir do núcleo xml-core.
  */
 export type {
   DadosEmitente,
@@ -7,10 +7,3 @@ export type {
   DadosProduto,
   ResultadoEdicao,
 } from "./xml-core";
-
-export type {
-  CstMappingData,
-  TaxReformRuleData,
-  ValoresIBSCBS,
-  TotaisIBSCBS,
-} from "./taxes";

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { updateProfile } from "@/app/actions/company";
-import { Pencil, Building2, Loader2 } from "lucide-react";
+import { Pencil, Building2, Loader2, Search } from "lucide-react";
 
 // Lista de estados brasileiros
 const STATE_BR = [
@@ -71,6 +71,7 @@ interface ProfileEditDialogProps {
       cidade?: string;
       uf?: string;
       cep?: string;
+      cMun?: string;
     } | null;
   };
 }
@@ -105,6 +106,9 @@ export function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
     (profile.endereco as { cidade?: string })?.cidade || ""
   );
   const [uf, setUf] = useState((profile.endereco as { uf?: string })?.uf || "");
+  const [cMun, setCMun] = useState(
+    (profile.endereco as { cMun?: string })?.cMun || ""
+  );
 
   // Reset do formulário quando o dialog abrir
   useEffect(() => {
@@ -120,6 +124,7 @@ export function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
         bairro?: string;
         cidade?: string;
         uf?: string;
+        cMun?: string;
       } | null;
       setCep(endereco?.cep || "");
       setLogradouro(endereco?.logradouro || "");
@@ -128,6 +133,7 @@ export function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
       setBairro(endereco?.bairro || "");
       setCidade(endereco?.cidade || "");
       setUf(endereco?.uf || "");
+      setCMun(endereco?.cMun || "");
     }
   }, [open, profile]);
 
@@ -176,6 +182,7 @@ export function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
           if (data.xBairro) setBairro(data.xBairro);
           if (data.xMun) setCidade(data.xMun);
           if (data.UF) setUf(data.UF);
+          if (data.cMun) setCMun(String(data.cMun));
           toast.success("Dados do CNPJ carregados com sucesso!");
         }
       } else {
@@ -216,6 +223,7 @@ export function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
           bairro: bairro.trim() || undefined,
           cidade: cidade.trim() || undefined,
           uf: uf || undefined,
+          cMun: cMun || undefined,
         },
       });
 
@@ -267,30 +275,36 @@ export function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
           {/* Dados Básicos */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Fantasia *</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Nome da empresa"
-              />
+              <Label>Nome da Empresa *</Label>
+              <div className="h-10 px-3 rounded-md border bg-muted/30 text-sm flex items-center">
+                {name || "Será preenchido após pesquisar o CNPJ"}
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="cnpj">CNPJ *</Label>
-              <div className="relative">
-                <MaskedInput
-                  mask="cnpj"
-                  value={cnpj}
-                  onChange={setCnpj}
-                  onBlur={handleCnpjBlur}
-                  placeholder="00.000.000/0000-00"
-                />
-                {loadingCnpj && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <MaskedInput
+                    mask="cnpj"
+                    value={cnpj}
+                    onChange={setCnpj}
+                    placeholder="00.000.000/0000-00"
+                  />
+                  {loadingCnpj && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleCnpjBlur}
+                  disabled={loadingCnpj || cnpj.replace(/\D/g, "").length !== 14}
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Ao sair do campo, os dados serão buscados automaticamente
+                Use a lupa para buscar os dados do CNPJ
               </p>
             </div>
           </div>

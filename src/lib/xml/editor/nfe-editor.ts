@@ -1,12 +1,12 @@
 import { editarChavesXml } from "./xml-core";
 import type { ChaveMapping, ReferenceMapping } from "@/lib/xml";
+import type { NormalizedTaxRule } from "@/lib/tax-rules/types";
 import type {
   DadosEmitente,
   DadosDestinatario,
   DadosProduto,
   ResultadoEdicao,
 } from "./types";
-import type { CstMappingData, TaxReformRuleData, ImpostosData } from "./taxes";
 
 export function editarNFe(
   xmlContent: string,
@@ -23,9 +23,7 @@ export function editarNFe(
     produtos?: Array<
       DadosProduto & { isPrincipal: boolean; ordem: number }
     > | null;
-    cstMappings?: CstMappingData[] | null;
-    taxReformRule?: TaxReformRuleData | null;
-    impostosData?: ImpostosData | null;
+    taxRules?: NormalizedTaxRule[] | null;
   }
 ): ResultadoEdicao {
   if (!xmlContent.includes("<nfeProc") && !xmlContent.includes("<NFe")) {
@@ -48,9 +46,7 @@ export function editarNFe(
     novoEmitente = null,
     novoDestinatario = null,
     produtos = null,
-    cstMappings = null,
-    taxReformRule = null,
-    impostosData = null,
+    taxRules = null,
   } = params;
 
   return editarChavesXml(
@@ -65,8 +61,6 @@ export function editarNFe(
     novoEmitente,
     novoDestinatario,
     produtos,
-    cstMappings,
-    taxReformRule,
-    impostosData
+    taxRules
   );
 }

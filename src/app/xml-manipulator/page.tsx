@@ -5,6 +5,15 @@ import XmlProcessorClient from "./_components/XmlProcessorClient";
 
 export const dynamic = "force-dynamic";
 
+function isMissingColumnError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2022"
+  );
+}
+
 export default async function XmlManipulatorPage() {
   const currentUser = await getCurrentUser();
 
@@ -17,28 +26,52 @@ export default async function XmlManipulatorPage() {
   let scenarios;
 
   if (role === "admin") {
-    scenarios = await db.scenario.findMany({
-      where: {
-        active: true,
-        deletedAt: null,
-        Profile: {
-          is: {
-            workspaceId,
-            deletedAt: null,
+    try {
+      scenarios = await db.scenario.findMany({
+        where: {
+          active: true,
+          deletedAt: null,
+          Profile: {
+            is: {
+              workspaceId,
+              deletedAt: null,
+            },
           },
         },
-      },
-      select: {
-        id: true,
-        name: true,
-        Profile: {
-          select: {
-            name: true,
+        select: {
+          id: true,
+          name: true,
+          Profile: {
+            select: {
+              name: true,
+            },
           },
         },
-      },
-      orderBy: [{ Profile: { name: "asc" } }, { name: "asc" }],
-    });
+        orderBy: [{ Profile: { name: "asc" } }, { name: "asc" }],
+      });
+    } catch (error) {
+      if (!isMissingColumnError(error)) throw error;
+      scenarios = await db.scenario.findMany({
+        where: {
+          active: true,
+          Profile: {
+            is: {
+              workspaceId,
+            },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          Profile: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: [{ Profile: { name: "asc" } }, { name: "asc" }],
+      });
+    }
 
     scenarios = scenarios.map((s) => ({
       id: s.id,
@@ -56,15 +89,27 @@ export default async function XmlManipulatorPage() {
       );
     }
 
-    scenarios = await db.scenario.findMany({
-      where: {
-        active: true,
-        deletedAt: null,
-        profileId: userProfileId,
-      },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    });
+    try {
+      scenarios = await db.scenario.findMany({
+        where: {
+          active: true,
+          deletedAt: null,
+          profileId: userProfileId,
+        },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      });
+    } catch (error) {
+      if (!isMissingColumnError(error)) throw error;
+      scenarios = await db.scenario.findMany({
+        where: {
+          active: true,
+          profileId: userProfileId,
+        },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      });
+    }
   }
 
   const isAdmin = role === "admin";

@@ -85,55 +85,6 @@ export interface DadosProduto {
 }
 
 // ============================================================================
-// OPERAÇÕES FISCAIS
-// ============================================================================
-
-/**
- * Mapeamento de CST por tipo de operação
- */
-export interface CstMappingData {
-  tipoOperacao: TipoOperacao;
-  icms?: string | null;
-  ipi?: string | null;
-  pis?: string | null;
-  cofins?: string | null;
-}
-
-/**
- * Dados da reforma tributária (IBS/CBS)
- */
-export interface TaxReformRuleData {
-  pIBSUF?: string | null;
-  pIBSMun?: string | null;
-  pCBS?: string | null;
-  vDevTrib?: string | null;
-  cClassTrib?: string | null;
-  CST?: string | null;
-}
-
-/**
- * Valores IBS/CBS calculados para um item
- */
-export interface ValoresIBSCBS {
-  vBC: string;
-  vIBSUF: string;
-  vIBSMun: string;
-  vCBS: string;
-  vDevTrib: string;
-}
-
-/**
- * Totais IBS/CBS acumulados
- */
-export interface TotaisIBSCBS {
-  vBC: number;
-  vIBSUF: number;
-  vIBSMun: number;
-  vCBS: number;
-  vDevTrib: number;
-}
-
-// ============================================================================
 // MAPEAMENTOS
 // ============================================================================
 
@@ -177,8 +128,6 @@ export interface ParametrosEdicaoNFe {
   produtos?: Array<
     DadosProduto & { isPrincipal: boolean; ordem: number }
   > | null;
-  cstMappings?: CstMappingData[] | null;
-  taxReformRule?: TaxReformRuleData | null;
 }
 
 /**
