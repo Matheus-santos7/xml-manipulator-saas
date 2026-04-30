@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Upload, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { importScenariosFromSpreadsheet } from "@/app/actions/scenario";
@@ -13,6 +14,7 @@ type ScenarioBatchImportProps = {
 export function ScenarioBatchImport({ profileId }: ScenarioBatchImportProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState<string>("");
 
   async function handleImport() {
     const file = inputRef.current?.files?.[0];
@@ -44,15 +46,16 @@ export function ScenarioBatchImport({ profileId }: ScenarioBatchImportProps) {
     } finally {
       setLoading(false);
       if (inputRef.current) inputRef.current.value = "";
+      setSelectedFileName("");
     }
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button asChild variant="outline" size="sm">
         <a href="/templates/cenarios-em-lote-template.xlsx" download>
           <Download className="h-4 w-4 mr-2" />
-          Baixar Template
+          Template
         </a>
       </Button>
 
@@ -61,8 +64,9 @@ export function ScenarioBatchImport({ profileId }: ScenarioBatchImportProps) {
         type="file"
         accept=".xlsx,.xls,.csv"
         className="hidden"
-        onChange={() => {
-          // noop - arquivo fica no input para importação
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          setSelectedFileName(file?.name || "");
         }}
       />
       <Button
@@ -71,15 +75,24 @@ export function ScenarioBatchImport({ profileId }: ScenarioBatchImportProps) {
         size="sm"
         onClick={() => inputRef.current?.click()}
       >
-        Selecionar Planilha
+        Selecionar
       </Button>
+      {selectedFileName && (
+        <Badge
+          variant="secondary"
+          className="max-w-[220px] truncate font-normal"
+          title={selectedFileName}
+        >
+          {selectedFileName}
+        </Badge>
+      )}
       <Button type="button" size="sm" onClick={handleImport} disabled={loading}>
         {loading ? (
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
         ) : (
           <Upload className="h-4 w-4 mr-2" />
         )}
-        Importar Lote
+        Importar
       </Button>
     </div>
   );

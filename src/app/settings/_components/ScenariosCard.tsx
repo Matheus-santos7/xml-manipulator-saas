@@ -10,7 +10,6 @@ import { FileCog, Building2 } from "lucide-react";
 import type { UserPermissions } from "@/lib/auth/rbac";
 import type { ScenarioWithRelations } from "@/lib/scenarios/types";
 import { ScenarioEditor } from "./ScenarioEditor";
-import { ScenarioBatchImport } from "./ScenarioBatchImport";
 
 interface ScenariosCardProps {
   scenarios: ScenarioWithRelations[];
@@ -35,22 +34,22 @@ export function ScenariosCard({
   return (
     <div className="flex-1 flex flex-col">
       <Card className="h-full flex flex-col">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
+        <CardHeader className="space-y-2 pb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <CardTitle className="flex items-center gap-2">
                 <FileCog className="h-5 w-5" /> Cenários de Teste
               </CardTitle>
-              <CardDescription>
-                Gerenciando cenários de:{" "}
-                <span className="font-bold text-primary">
-                  {selectedProfileName || "Selecione..."}
-                </span>
-              </CardDescription>
+              <CardDescription>Empresa selecionada</CardDescription>
+              <p
+                className="mt-1 text-sm font-medium text-primary/90 truncate"
+                title={selectedProfileName || "Selecione uma empresa"}
+              >
+                {selectedProfileName || "Selecione uma empresa"}
+              </p>
             </div>
             {hasSelectedProfile && canManageScenarios && (
-              <div className="flex items-center gap-2">
-                <ScenarioBatchImport profileId={selectedProfileId!} />
+              <div className="shrink-0">
                 <ScenarioEditor
                   profileId={selectedProfileId!}
                   taxRuleNames={taxRuleNames}
@@ -75,7 +74,7 @@ export function ScenariosCard({
               <FileCog className="h-10 w-10 opacity-20" />
               <p>Nenhum cenário criado para esta empresa.</p>
               {canManageScenarios && (
-                <p className="text-xs">Clique em &quot;Novo Cenário&quot; acima.</p>
+                <p className="text-xs">Use o botão &quot;Novo Cenário&quot; acima.</p>
               )}
             </div>
           ) : (

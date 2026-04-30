@@ -49,6 +49,7 @@ import {
 import { toast } from "sonner";
 import { saveScenario, deleteScenario } from "@/app/actions/scenario";
 import type { ScenarioDB } from "@/types";
+import { ScenarioBatchImport } from "./ScenarioBatchImport";
 import {
   Trash2,
   Plus,
@@ -651,6 +652,14 @@ export function ScenarioEditor({
               </AlertDialog>
             )}
           </DialogHeader>
+          {!isEditing && !isDuplicating && (
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <p className="text-xs text-muted-foreground mb-2">
+                Importação rápida por planilha (opcional)
+              </p>
+              <ScenarioBatchImport profileId={profileId} />
+            </div>
+          )}
 
           <Form {...form}>
             <form
